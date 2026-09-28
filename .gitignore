@@ -1,0 +1,45 @@
+# Arduino
+*.ino.bak
+*.ino.orig
+build/
+Build/
+*.elf
+*.hex
+*.map
+*.eep
+
+# Arduino IDE / builder metadata
+bbl.options
+includes.cache
+compile_commands.json
+.pio/
+.vscode/
+.arduinoIDE/
+
+# Build output that should never be committed
+out/
+dist/
+*.tmp
+*.bak
+*~
+
+# OS noise
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editors
+*.swp
+*.swo
+.idea/
+*.sublime-workspace
+
+# Never commit local measurement data or credentials of any kind
+*.csv.local
+secrets.h
+*.env
