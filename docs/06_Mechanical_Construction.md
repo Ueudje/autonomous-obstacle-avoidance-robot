@@ -5,6 +5,15 @@ notes that cost time on this project.
 
 ![Chassis assembly](../images/chassis_assembly.png)
 ![Robot side view](../diagrams/robot_side_view.png)
+![Component layout and heights](../diagrams/robot_component_layout.png)
+
+The layout drawing is the dimensioned one: it sections the robot against a
+centimetre scale, so every part's position and height above the ground can be
+read off directly. The two heights the brief fixes are ≈ 1.8 cm (lower sensor
+level) and ≈ 5.2 cm (upper level); everything else on that drawing is marked
+**to be verified** and must be measured on your build. The table at the bottom
+of the drawing lists which numbers are from the brief and which are yours to
+fill in.
 
 ---
 
@@ -150,11 +159,15 @@ The full checklist is repeated in
 
 ## 16. What is still not fixed
 
+These are the same items marked on
+[the component layout drawing](../diagrams/robot_component_layout.png); measure
+them and update both.
+
 | Item | Status |
 |---|---|
 | Lower sensor level ≈ 1.8 cm | from the brief, approximate — measure |
 | Upper level ≈ 5.2 cm | from the brief, approximate — measure |
 | Chassis length / width | **to be verified** |
-| Deck gap / standoff length | **to be verified** |
+| Deck gap / standoff length | **to be verified** (3.4 cm if the two brief heights are exact) |
 | Wheel diameter | **to be verified** |
 | LED series resistor value | **to be verified** |

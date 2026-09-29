@@ -164,6 +164,12 @@ The reasoning behind the whole power choice is in
 ![Robot top view](../diagrams/robot_top_view.png)
 ![Robot side view](../diagrams/robot_side_view.png)
 ![Robot front view](../diagrams/robot_front_view.png)
+![Component layout and heights](../diagrams/robot_component_layout.png)
+
+The layout drawing is the dimensioned one: a side elevation against a
+centimetre scale, giving each component's position and height above the
+ground, plus a height table that repeats which numbers are from the brief
+(≈ 1.8 cm and ≈ 5.2 cm) and which are still to be measured.
 
 ## 9. Summary of everything marked "to be verified"
 

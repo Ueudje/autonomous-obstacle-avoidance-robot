@@ -303,4 +303,5 @@ Run these in order. The full version with expected readings is in
 | [`diagrams/pin_map_diagram.png`](../diagrams/pin_map_diagram.png) | the conflict check, drawn |
 | [`diagrams/wiring_diagram.png`](../diagrams/wiring_diagram.png) | the complete wiring |
 | [`diagrams/robot_top_view.png`](../diagrams/robot_top_view.png) | sensor and indicator positions |
+| [`diagrams/robot_component_layout.png`](../diagrams/robot_component_layout.png) | component positions and heights above the ground, in cm |
 | [`images/robot_overview.png`](../images/robot_overview.png) | the finished robot |

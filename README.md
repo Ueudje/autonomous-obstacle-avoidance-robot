@@ -26,6 +26,8 @@ describing what the code should have done.
 
 ![Top view](diagrams/robot_top_view.png)
 
+![Component layout and heights](diagrams/robot_component_layout.png)
+
 | | |
 |---|---|
 | Controller | Arduino Uno (ATmega328P) |
@@ -180,6 +182,7 @@ specifications — where they disagree with document 12, document 12 is right.
 | `diagrams/system_block_diagram.png` | the subsystems and their interfaces |
 | `diagrams/algorithm_flowchart.png` | the control flow, with every blocking duration |
 | `diagrams/robot_top_view.png` | sensor and indicator positions, with the real pin labels |
+| `diagrams/robot_component_layout.png` | where every component sits, and its height above the ground in cm |
 | `diagrams/robot_side_view.png` | the two deck heights |
 | `diagrams/robot_front_view.png` | front and rear indicator layout |
 | `diagrams/wiring_diagram.png` | the complete wiring, conflicts marked |
