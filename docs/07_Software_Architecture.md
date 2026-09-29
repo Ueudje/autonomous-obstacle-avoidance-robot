@@ -1,257 +1,234 @@
 # 07 — Software Architecture
 
-How [`src/robot/Robot.ino`](../src/robot/Robot.ino) is organised, and why each
-programming technique in the brief is used where it is used.
+This document describes the firmware in [`src/robot/Robot.ino`](../src/robot/Robot.ino)
+as it is written. It is a description, not an endorsement: where the code has a
+weakness, the weakness is named here and cross-referenced to
+[13 — Future Improvements](13_Future_Improvements.md).
+
+![Control flow](../diagrams/algorithm_flowchart.png)
 
 ---
 
-## 1. File structure of the sketch
+## 1. File structure
 
-The firmware is a single `.ino` file, sectioned in this order:
+| Line | Item | Purpose |
+|---|---|---|
+| 1 | `#include <AFMotor.h>` | the only library |
+| 2–9 | the eight pin `#define`s | every pin the sketch uses |
+| 10–13 | four `AF_DCMotor` objects | one per shield channel |
+| 15 | `blinkInterval` | the blink half-period, 200 ms |
+| 16–41 | `setup()` | speeds, RNG seed, 2 s startup signal |
+| 42–58 | `stopMotors()` | release + set all four indicators |
+| 59–68 | `moveForward()` | all four forward, front pair lit |
+| 69–88 | `moveBackward()` | 2 s reverse with a blinking rear pair |
+| 89–110 | `turnLeft()` | 1 s left turn, right pair blinking |
+| 111–132 | `turnRight()` | 1 s right turn, left pair blinking |
+| 133–159 | `loop()` | the sensor read and the three cases |
 
-| Section | Content |
-|---|---|
-| Header comment | platform, hardware, behaviour, timing model |
-| 1 | `AFMotor` objects, one per channel, and `MOTOR_SPEED` |
-| 2 | `#define` pin names (sensors and LEDs) |
-| 3 | `SENSOR_ACTIVE_LOW` |
-| 4 | LED bit masks |
-| 5 | timing constants |
-| 6 | state enum, state variable, `millis()` bookkeeping, sensor flags |
-| — | LED task: `setLed`, `applyLeds`, `setLeds`, `startBlink`, `updateBlink` |
-| — | sensor task: `isObstacle`, `readSensors`, `frontBlocked`, `rearBlocked` |
-| — | motor task: `setMotorSpeed`, `driveAllForward`, `driveAllBackward`, `stopMotors`, `turnInPlace` |
-| — | state helpers: `changeState`, `stateElapsed` |
-| — | behaviour: one `beginX()` per state |
-| — | `updateRobot()`, `setup()`, `loop()` |
-
-Three tasks — LEDs, sensors, motors — are kept separate on purpose. They do not
-call each other; the state machine decides what each one should be doing.
+Single file, 159 lines, seven functions, no classes, no `struct`, no headers of
+its own, no serial output.
 
 ## 2. The pin map in code
 
 ```cpp
-#define IR_FRONT_LEFT   A2   // digital pin 16
-#define IR_FRONT_RIGHT  A3   // digital pin 17
-#define IR_REAR_LEFT    A4   // digital pin 18
-#define IR_REAR_RIGHT   A5   // digital pin 19
-
-#define LED_FRONT_LEFT  2
-#define LED_FRONT_RIGHT 9
-#define LED_REAR_LEFT   10
-#define LED_REAR_RIGHT  13
+#define IR_FRONT_LEFT A0     // free
+#define IR_FRONT_RIGHT A1    // free
+#define IR_BACK_LEFT A2      // free
+#define IR_BACK_RIGHT A3     // free
+#define LED_FRONT_LEFT 6     // TAKEN - M3 speed PWM
+#define LED_FRONT_RIGHT 0    // TAKEN - USB serial TX
+#define LED_BACK_LEFT 12     // TAKEN - 74HC595 latch
+#define LED_BACK_RIGHT 3     // TAKEN - M2 speed PWM
 ```
 
-`#define` is used rather than variables because a pin name is a compile-time
-constant: the Arduino preprocessor substitutes the text, so there is no RAM cost
-and no runtime indirection.
+Named constants, and a `#define` rather than a `const` — which is the
+conventional choice for pins in this style of sketch and costs nothing here.
+The mapping from these names to physical positions is in
+[12 §2](12_Final_Implementation.md#2-final-pin-assignment-as-written-in-the-sketch),
+and the conflicts in [12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
 
-`A2` is not a magic number — it is the Arduino's own alias for digital pin 16.
+## 3. Two raw numbers and a nameless blink interval
 
-## 3. LED logic as a bit mask
+Two values in the firmware are written inline instead of being named:
 
-```cpp
-const uint8_t LED_FL_BIT = 0x01;
-const uint8_t LED_FR_BIT = 0x02;
-const uint8_t LED_RL_BIT = 0x04;
-const uint8_t LED_RR_BIT = 0x08;
+| Value | Where | Problem |
+|---|---|---|
+| `200` | four times, in the two `if` statements of `loop()` | the obstacle threshold is the single most important number in the sketch, and it is written out four times, so the two statements can drift apart |
+| `randomSeed(analogRead(5))` | `setup()` | `A5` is not used for anything; the seed comes from a floating pin |
 
-const uint8_t LED_FRONT_PAIR = LED_FL_BIT | LED_FR_BIT;
-const uint8_t LED_REAR_PAIR  = LED_RL_BIT | LED_RR_BIT;
-const uint8_t LED_LEFT_SIDE  = LED_FL_BIT | LED_RL_BIT;
-const uint8_t LED_RIGHT_SIDE = LED_FR_BIT | LED_RR_BIT;
-const uint8_t LED_ALL        = LED_FRONT_PAIR | LED_REAR_PAIR;
-```
+The blink half-period *is* named (`blinkInterval = 200`), but it is a file-scope
+`const` declared between the pin defines and `setup()`, so it reads more like a
+pin definition than a timing constant.
 
-`uint8_t` is an unsigned 8-bit integer: one byte, values 0–255. A mask of four
-bits fits in it, and `mask & LED_FL_BIT` is a single bit test.
-
-The four *groups the behaviour actually needs* are then named once, and the
-whole LED behaviour reads as `setLeds(LED_FRONT_PAIR)` rather than four separate
-writes.
+None of these are bugs. They are the points a reviewer would raise first, and
+the fixes are small — see
+[13 §3](13_Future_Improvements.md#3-three-naming-and-structure-fixes-worth-making).
 
 ## 4. Timing with `millis()`
 
-The pattern used throughout is:
+`millis()` is used in three places only, and all three are the deadline test of
+a timed `while` loop:
 
 ```cpp
-if (millis() - previousPollMs >= OBSTACLE_POLL_MS) {
-  previousPollMs = millis();
-  ...
-}
+while (millis() - moveStart < 2000) { …  delay(10);  }   // moveBackward()
+while (millis() - turnStart  < 1000) { …  delay(10);  }   // turnLeft()
+while (millis() - turnStart  < 1000) { …  delay(10);  }   // turnRight()
 ```
 
-In words: *store when something last happened; on every pass through the loop,
-ask how long it has been since; act only when enough time has passed.*
+That combination is the important point. `millis()` is used for the *deadline*
+and `delay(10)` for the *pacing*, so the durations are accurate to about 10 ms
+and the loop body — which re-issues `run()` and re-writes the indicators — runs
+100 times a second while it lasts. The blink toggle uses `millis()` too, against
+`lastBlink` with the same 200 ms `blinkInterval`.
 
-Why it is written that way:
+Everywhere else, the sketch waits with a bare `delay()`:
 
-* `loop()` runs thousands of times per second, and each pass is cheap — it only
-  checks a subtraction.
-* `millis()` returns an `unsigned long` (32-bit) that wraps after ≈ 49.7 days.
-  Writing the test as `now - previous >= interval` instead of
-  `now >= previous + interval` keeps the comparison correct across the wrap,
-  because unsigned arithmetic wraps to the correct value in exactly the same
-  way.
-* Nothing ever waits. The sensor scan, the LED blink and the motor command are
-  all updated on every pass.
-
-### 4.1 Why not `delay()`
-
-`delay(700)` does not wait "a bit" — it **stops the whole program**. For the
-duration of the call the Arduino executes nothing else: no sensor is read, no
-LED blinks, no motor command is issued. Everything is frozen.
-
-That matters here because the robot has several things to do at once:
-
-| Task | Needs to run |
+| Call | Duration |
 |---|---|
-| scan the four IR sensors | every 50 ms, continuously |
-| blink the active LED group | every 250 ms, continuously |
-| drive / reverse / turn | continuously, with a deadline |
-| decide what to do next | on every pass |
+| `delay(1000)` in `setup()` ×2 | 1 s on, 1 s off |
+| `delay(1000)` before `moveBackward()` | 1 s |
+| `delay(1000)` after `stopMotors(true)` in the front path | 1 s |
+| `delay(1000)`, `delay(500)`, `delay(300)` in the rear path | 1 s, 0.5 s, 0.3 s |
 
-With `delay()`, a 700 ms reverse would also blind the robot for 700 ms: it
-could not notice that something moved into its path, and the LEDs would freeze
-mid-blink. The robot would keep repeating the same reaction on a stale sensor
-picture — which is exactly the failure described in
-[history/initial_concept.md](../history/initial_concept.md).
+So the sketch is *not* a non-blocking design. Its three `millis()` deadlines are
+correct, but the ten `delay()` calls — and the bodies of the three timed loops
+themselves — mean the loop is blocked for as long as any of them lasts. See §5.
 
-The fix was to turn the sequence into a state machine with deadlines. Nothing
-waits; each state is left as soon as its own timer expires.
+## 5. Why that matters here
 
-## 5. `random()` and `randomSeed()`
-
-```cpp
-bool turnLeft = (random(0, 2) == 0);
-...
-randomSeed(micros());
-```
-
-`random(0, 2)` returns 0 or 1, giving an even left/right choice. Without a seed
-the Arduino's pseudo-random generator replays the *same* sequence on every
-power-up, so a robot that always turns left first would build a recognisable
-pattern into its room. `randomSeed(micros())` seeds it from the microsecond
-timer at boot so the choice differs between runs.
-
-## 6. Why the sensors are read digitally
-
-The final implementation uses `digitalRead()` and **never** calls
-`analogRead()`. The FC-51 module's `OUT` pin is a digital output from an LM393
-comparator: it is a valid logic level, not a proportional measurement. See
-[history/analog_sensor_experiment.md](../history/analog_sensor_experiment.md)
-for the analog approach that was explored first and then dropped.
-
-The pins are on the ANALOG header, which is legal and intentional:
-
-* A0–A5 are printed in the analog header, but on the ATmega328P they are six
-  general-purpose I/O pins.
-* A0–A5 map to digital pins 14–19; A2–A5 (16–19) can be used with
-  `pinMode()`, `digitalRead()` and `digitalWrite()`.
-* A0 and A1 (digital 14 and 15) are **analog input only** — `digitalRead()` and
-  `digitalWrite()` do not work on them. That is why they are not used.
-
-The physical header a pin sits in and the way software drives it are two
-different questions.
-
-## 7. `stopMotors(bool)` and a default parameter
-
-```cpp
-void setLed(uint8_t pin, bool on = true)
-void stopMotors(bool indicateStop)
-void startBlink(uint8_t mask, bool levelOn = true)
-```
-
-`stopMotors(true)` releases the motors **and** lights all four LEDs;
-`stopMotors(false)` releases the motors and leaves the indicators alone. The
-rear-obstacle sequence needs the second form, because it must show "stop" with
-the *front* pair still lit — see [08 Algorithm §5](08_Algorithm.md#5-rear-obstacle-sequence).
-
-Default parameters (`bool on = true`) remove repetition at the call site
-without hiding what the function does.
-
-## 8. Types used
-
-| Type | Where | Why |
-|---|---|---|
-| `const uint8_t` | `MOTOR_SPEED`, LED masks, blink mask | small constants and bit fields; `const` documents intent |
-| `const unsigned long` | all `*_MS` timing constants | 32-bit, matches the return type of `millis()` |
-| `unsigned long` | `stateStartedAt`, `previousPollMs`, `previousBlinkMs` | timestamps, must not go negative |
-| `bool` | `obstacleFrontLeft` … `rearRight`, `blinkLevel` | a sensor result is a yes/no; `int` would invite `1`/`2`/`3` confusion |
-| `enum RobotState` | the eight states | the compiler rejects a state value that does not exist |
-| `uint8_t` parameter | `applyLeds(uint8_t mask)` | a mask is 8 bits wide |
-
-`bool` is used deliberately for the four obstacle flags. The brief calls for
-`frontBlocked()` to be `obstacleFrontLeft || obstacleFrontRight`, and with `bool`
-that expression can only be `true` or `false`. Assigning a raw `digitalRead()`
-result straight into a `bool` would also work, but then the "which level means
-obstacle" decision would be scattered across four places instead of being
-handled once in `isObstacle()`.
-
-## 9. `setup()` and `loop()`
-
-```cpp
-void setup() {
-  pinMode(IR_FRONT_LEFT,  INPUT);    // inputs first, so nothing floats
-  ...
-  pinMode(LED_FRONT_LEFT, OUTPUT);
-  ...
-  applyLeds(0);
-  stopMotors(false);                 // no twitch while configuring
-  randomSeed(micros());
-  beginStartup();
-}
-
-void loop() {
-  updateRobot();
-}
-```
-
-`setup()` runs once, `loop()` runs forever. `loop()` contains exactly one
-statement: the non-blocking update. Everything interesting happens in
-`updateRobot()`.
-
-## 10. `AFMotor` and the direction constants
-
-`AFMotor` drives one channel per object. The direction constants come from the
-library:
-
-| Constant | Meaning |
+| Property | Value |
 |---|---|
-| `FORWARD` | run the motor forward for that channel |
-| `BACKWARD` | run the motor backward for that channel |
-| `RELEASE` | coast — outputs high-impedance, no drive, no braking |
-| `setSpeed(n)` | PWM duty for that channel, 0–255 |
+| Longest single block | 2000 ms, inside `moveBackward()` |
+| Longest total unresponsiveness | 5000 ms, across the whole front-obstacle path |
+| Sensor reads during a manoeuvre | none |
+| LED blink during a manoeuvre | yes — the blink runs inside the three `while` loops |
+| What the robot does if an obstacle appears mid-sequence | nothing, until the sequence ends |
 
-The firmware issues all four commands through three small helpers
-(`driveAllForward`, `driveAllBackward`, `stopMotors`) and one turn helper
-(`turnInPlace`), so no motor command is ever written twice at two different
-places.
+The indicators are the one thing that keeps working, because the blink lives
+inside the timed loops rather than being produced by a separate task.
 
-There is **no per-motor inversion in the software.** Turning a motor the wrong
-way is a wiring problem, and it was fixed in the wiring — see
-[05 Wiring §4](05_Wiring.md#4-motor-wiring-and-the-leftright-mirror).
+`delay(10)` inside the loops also means the blink half-period of 200 ms is
+resolved to 10 ms, so the blink is symmetric to within one poll.
 
-## 11. Code-quality checklist applied to the final file
+## 6. Why the sensors are read with `analogRead()`
+
+The sketch calls `analogRead()` on all four FC-51 `OUT` pins and compares the
+result against `200`. The modules sit behind an LM393 comparator, so what
+arrives at the pin is a digital level, and this test is a digital test written
+in analog clothing.
+
+| Consequence | Detail |
+|---|---|
+| It works | LOW reads ≈ 0, which is `< 200` |
+| Inverted-polarity modules | do **not** work: HIGH would read ≈ 1023 and never trigger |
+| Threshold tuning | the FC-51's own trimpot is the threshold; the `200` only has to sit between the two digital levels |
+| Hysteresis | none |
+| `A0` and `A1` | analog-only pins; they cannot be used with `digitalRead()` or `digitalWrite()` at all |
+
+The digital alternative — `digitalRead()` on `A2`–`A5` with a single
+`SENSOR_ACTIVE_LOW` switch — was written and then superseded. It is recorded in
+[history/analog_sensor_experiment.md](../history/analog_sensor_experiment.md),
+and the reasons are in
+[13 §1](13_Future_Improvements.md#12-read-the-sensors-digitally).
+
+## 7. `stopMotors(bool allLedsOn = false)`
+
+A default argument used to give one function two meanings:
+
+```cpp
+void stopMotors(bool allLedsOn = false) {
+  motor1.run(RELEASE); … motor4.run(RELEASE);
+  if (allLedsOn) { all four indicators HIGH; }
+  else           { all four indicators LOW;  }
+}
+```
+
+| Call | Effect |
+|---|---|
+| `stopMotors(true)` | motors released, all four indicators on — the obstacle indication |
+| `stopMotors()` | motors released, all four indicators off — the all-clear state |
+
+Both turn functions end with `stopMotors(true)`, so a completed turn leaves all
+four indicators lit until the next `loop()` pass calls `moveForward()`.
+
+The name is slightly misleading — it also drives the indicators — but it is
+consistent and it is called from six places, always as `stopMotors(true)`.
+
+## 8. LED logic, written out
+
+There is no bit mask and no table; the indicators are written directly.
+
+| Function | FL | FR | BL | BR |
+|---|---|---|---|---|
+| `moveForward()` | HIGH | HIGH | LOW | LOW |
+| `moveBackward()` | LOW | LOW | `blinkState` | `blinkState` |
+| `turnLeft()` | LOW | LOW | LOW | `blinkState` |
+| `turnRight()` | `blinkState` | `blinkState` | LOW | LOW |
+| `stopMotors(true)` | HIGH | HIGH | HIGH | HIGH |
+| `stopMotors()` | LOW | LOW | LOW | LOW |
+
+`blinkState` is a local `bool` in each of the three timed functions, initialised
+to `false`, which is why the first 200 ms of `moveBackward()` and of both turns
+are dark before the first toggle.
+
+## 9. Types used
+
+| Type | Where |
+|---|---|
+| `unsigned long` | `blinkInterval`, and the `millis()` deadlines inside the loops |
+| `int` | the four `analogRead()` results |
+| `bool` | the `stopMotors()` parameter, and the two `blinkState` locals |
+| `uint8_t`, `unsigned long` | from the library's own declarations, not from this sketch |
+
+`random(2)` returns `int`; the result is only ever compared against `0`, so no
+cast is needed.
+
+## 10. `setup()` and `loop()`
+
+`setup()` does five things, in this order:
+
+1. `pinMode()` on the four sensor pins as `INPUT` and the four indicator pins
+   as `OUTPUT`;
+2. `setSpeed(150)` on all four motors — once, and never changed;
+3. `randomSeed(analogRead(5))` — seeds the RNG from a floating pin;
+4. all four indicators `HIGH`, `delay(1000)`;
+5. all four indicators `LOW`, `delay(1000)`.
+
+`loop()` reads, tests, and dispatches — the three cases are described in
+[08 Algorithm](08_Algorithm.md). There is no `else` between the front and rear
+tests other than the `else if`, so a front obstacle always wins over a rear one.
+
+## 11. `AFMotor` and the direction constants
+
+`AF_DCMotor motor1(1)` … `motor4(4)` bind the objects to shield channels M1–M4.
+`run(FORWARD)`, `run(BACKWARD)` and `run(RELEASE)` are the library's own
+constants. **No motor is ever inverted in software** — the left/right mirror is
+a wiring fact, documented in
+[05 §4](05_Wiring.md#4-motor-wiring-and-the-leftright-mirror) and in
+[history/motor_testing.md](../history/motor_testing.md).
+
+## 12. Quality checklist applied to the final file
 
 | Check | Result |
 |---|---|
-| Syntax | balanced braces, every statement terminated, every function defined before use |
-| Logical conditions | `frontBlocked()` / `rearBlocked()` use `||` on `bool` values; the front test is evaluated first, so a front obstacle wins over a rear one |
-| Motor mapping | M1 FL, M2 BL, M3 BR, M4 FR — one object per channel |
-| Sensor mapping | A2 FL, A3 FR, A4 RL, A5 RR, consistent between wiring and code |
-| LED mapping | D2 FL, D9 FR, D10 RL, D13 RR |
-| Timing logic | every state has exactly one exit condition and one next state |
-| Function organisation | one `beginX()` per state; `switch` in one place |
-| `millis()` | used for the poll, the blink and every state deadline |
-| Blocking delays | none — no `delay()`, no `delayMicroseconds()` |
-| Unused variables | none; every declared identifier is read or written |
-| Boolean expressions | no `=` where `==` is meant; no implicit truthiness bugs |
-| Pin conflicts | checked against the AFMotor source — see [12 §7](12_Final_Implementation.md#7-pin-conflict--verification) |
-| Library compatibility | `AFMotor` with an Uno, shield V1 pinout |
+| Compiles as a single `.ino` | yes — see §9 for the library install |
+| Every `pinMode()` present for every pin used | yes, four and four |
+| Every pin written by `digitalWrite()` also set to `OUTPUT` | yes |
+| Speeds set for every motor before any `run()` | yes, in `setup()` |
+| `millis()` used as a deadline, not as a delay | yes, in both loops |
+| Blocking calls | **ten `delay()` calls and three `while` loops** — see §5 |
+| Unused variables | none |
+| Unused functions | none — all seven functions are called |
+| `random()` seeded | yes, once, in `setup()` |
+| Blocking vs non-blocking requirement | **not met** — see [13 §1](13_Future_Improvements.md#11-make-the-loop-non-blocking) |
+| Pin conflict with the shield | **three conflicts** — see [12 §7](12_Final_Implementation.md#7-pin-conflict--verification) |
 
-## 12. Where to look next
+## 13. Where to look next
 
-* The behaviour itself: [08 Algorithm](08_Algorithm.md)
-* The flowchart: [`diagrams/algorithm_flowchart.png`](../diagrams/algorithm_flowchart.png)
-* The final, normative description: [12 Final Implementation](12_Final_Implementation.md)
+* [08 — Algorithm](08_Algorithm.md): the three cases, in order, with every duration.
+* [12 — Final Implementation](12_Final_Implementation.md): the normative pinout
+  and the conflict report.
+* [10 — Troubleshooting](10_Troubleshooting.md): what to check when the robot
+  misbehaves with blocking waits in the loop.
+* [13 — Future Improvements](13_Future_Improvements.md): the ordered list of
+  changes that would make this firmware match the documentation it used to have.

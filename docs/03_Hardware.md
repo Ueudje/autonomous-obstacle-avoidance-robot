@@ -36,7 +36,7 @@ explicit list of everything the project brief does *not* fix.
 Digital I/O actually available on this board: D0–D13 plus A0–A5. D0/D1 are the
 USB serial lines and A0/A1 are analog-only on this chip. With the motor shield
 fitted, the project uses the pins listed in
-[12 Final Implementation §6](12_Final_Implementation.md#6-final-pin-mapping).
+[12 Final Implementation §6](12_Final_Implementation.md#2-final-pin-assignment-as-written-in-the-sketch).
 
 ## 3. Motor driver shield
 
@@ -80,19 +80,22 @@ lower chassis level.
 
 | Sensor | Position | Sketch pin | Physical connector |
 |---|---|---|---|
-| IR front left | front-left corner | `A2` (digital 16) | OUT |
-| IR front right | front-right corner | `A3` (digital 17) | OUT |
-| IR rear left | rear-left corner | `A4` (digital 18) | OUT |
-| IR rear right | rear-right corner | `A5` (digital 19) | OUT |
+| IR front left | front-left corner | `A0` | OUT |
+| IR front right | front-right corner | `A1` | OUT |
+| IR rear left | rear-left corner | `A2` | OUT |
+| IR rear right | rear-right corner | `A3` | OUT |
 
-* Interface: **VCC / GND / OUT**, driven by `digitalRead()`. The final firmware
-  does **not** call `analogRead()` — see
-  [07 Software Architecture §6](07_Software_Architecture.md#6-why-the-sensors-are-read-digitally).
-* A2–A5 are printed in the ANALOG header of the Uno but they are ordinary GPIO
-  pins; the physical header and the software use are two different things.
+* Interface: **VCC / GND / OUT**, read with `analogRead()`. The final firmware
+  calls `analogRead()` and tests `value < 200`; see
+  [07 Software Architecture §6](07_Software_Architecture.md#6-why-the-sensors-are-read-with-analogread).
+* The pin numbers above are the ones in the sketch. `A2`–`A5` are the pins a
+  *digital* rework would use, because they are ordinary GPIO (digital 16–19);
+  `A0` and `A1` are analog-input-only and cannot be used with `digitalRead()`.
+  Compare [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs).
 * `OUT` is **LOW while an obstacle is in range** on a standard module, which is
-  what `SENSOR_ACTIVE_LOW = 1` encodes. Confirm on your own board —
-  [09 Testing step 4](09_Testing.md#step-4--lowhigh-sensor-logic).
+  what makes the `< 200` test work. There is **no** `SENSOR_ACTIVE_LOW` switch
+  in this firmware, so an inverted module never triggers. Confirm on your own
+  board — [09 Testing step 6](09_Testing.md#7-stage-e--one-ir-sensor-at-a-time).
 * Detection distance is set by the on-board trimpot: roughly 2–40 cm depending
   on the module and the surface. **To be verified** for the real floor material.
 
@@ -100,10 +103,16 @@ lower chassis level.
 
 | LED | Colour | Position | Sketch pin |
 |---|---|---|---|
-| `LED_FRONT_LEFT` | red | front, above the front-left IR | `D2` |
-| `LED_FRONT_RIGHT` | red | front, above the front-right IR | `D9` |
-| `LED_REAR_LEFT` | white | rear, above the rear-left IR | `D10` |
-| `LED_REAR_RIGHT` | white | rear, above the rear-right IR | `D13` |
+| `LED_FRONT_LEFT` | red | front, above the front-left IR | `D6` — **conflicts** |
+| `LED_FRONT_RIGHT` | red | front, above the front-right IR | `D0` — **conflicts** |
+| `LED_REAR_LEFT` | white | rear, above the rear-left IR | `D12` — **conflicts** |
+| `LED_REAR_RIGHT` | white | rear, above the rear-right IR | `D3` — **conflicts** |
+
+All four of those pins are already owned by the motor shield or the USB port, so
+the indicators cannot work as the sketch wires them. A working build moves them
+to `D2`, `D9`, `D10`, `D13`; see
+[12 §7](12_Final_Implementation.md#7-pin-conflict--verification) and
+[05 §3.1](05_Wiring.md#31-why-the-four-indicator-pins-in-the-sketch-are-wrong).
 
 Every LED is driven **from an Arduino pin to GND** with a series resistor
 between the pin and the LED anode.
@@ -113,10 +122,12 @@ between the pin and the LED anode.
 * The current-limiting resistor may be placed in series on **either** side of
   the LED — electrically it makes no difference. In this build it is on the
   **pin side**, anode side.
-* `D13` is also the Uno's built-in LED pin. Driving it lights the onboard LED as
-  well; this is harmless (the onboard LED and its resistor are in parallel with
-  the external LED) but the onboard LED will mirror the rear-right indicator.
-  See [12 Final Implementation §7](12_Final_Implementation.md#7-pin-conflict--verification).
+* `D13`, which the recommended wiring uses for the rear-right indicator, is also
+  the Uno's built-in LED pin. Driving it lights the onboard LED as well; this is
+  harmless (the onboard LED and its resistor are in parallel with the external
+  LED) but the onboard LED will mirror the rear-right indicator. `D13` is also
+  not a PWM pin, so it is the wrong choice if an indicator is ever to be dimmed
+  rather than switched.
 
 ## 7. Power source
 

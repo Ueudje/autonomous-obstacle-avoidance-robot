@@ -137,41 +137,50 @@ of white paper, then remove it. Record which of the three changes the level.
 **This is the important one for this project.**
 
 ```
-A digitalRead() of the FC-51 OUT pin must be interpreted the right way round.
 The standard LM393 module pulls OUT LOW while an obstacle is in range.
-That is what the sketch assumes:
+The sketch reads the pin with analogRead() and treats a small number as
+an obstacle:
 
-    #define SENSOR_ACTIVE_LOW  1
+    int frontLeft = analogRead(IR_FRONT_LEFT);
     ...
-    return level == LOW;          // obstacle present
+    if (frontLeft < 200 || frontRight < 200) { ... }   // obstacle
 ```
+
+There is no `SENSOR_ACTIVE_LOW` switch in this firmware, so the polarity
+assumption is compiled into the comparison itself.
 
 Procedure:
 
 1. Upload the sketch.
-2. Open the Serial Monitor at 9600 baud and add a temporary
-   `Serial.println(obstacleFrontLeft);` in the `FORWARD` case.
-3. Hold an obstacle in front of the front-left module. The printed value must go
-   to `1` when the obstacle appears, not to `0`.
-4. If it does the opposite, **your module reports HIGH for "obstacle"**. Set
-   `#define SENSOR_ACTIVE_LOW 0` — that is the only change needed. Do not
-       "fix" it by editing four different functions.
+2. Read the four pins directly — a one-line sketch per pin, or a temporary
+   `Serial.println(analogRead(A0));` in `loop()`. **Note:** the supplied
+   firmware sets `pinMode(0, OUTPUT)`, which takes the USB serial TX line away
+   from the board, so the Serial Monitor will not work until the indicator pins
+   are moved — [12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
+3. Hold an obstacle in front of the front-left module. The reading must **fall**
+   to near 0. With nothing in range it should sit near 1023.
+4. If it rises instead, **your module reports HIGH for "obstacle"** and the robot
+   will never react. The fix is a one-line change at both comparison sites in
+   `loop()` — there is no switch to flip, which is the fault being reported.
 
-**Observation on this build:** `SENSOR_ACTIVE_LOW = 1` was correct, and the
-behaviour matched the datasheet description of the module.
+**Observation on this build:** `OUT` was LOW while blocked, as the datasheet
+description of the module says, so the `< 200` test worked. The *values* were
+not recorded beyond that observation, so the exact margins are **to be
+verified**.
 
 ## 8. Stage F — sensors and LEDs together
 
 | Step | Action | Expected |
 |---|---|---|
-| F1 | All LEDs off at power-up, then blinking for 3 s. | Startup indication. |
-| F2 | After 3 s the robot starts driving and the front pair stays on. | Normal forward. |
-| F3 | Block the front-left sensor. | The robot stops within ~50 ms, all four LEDs on. |
-| F4 | Release it. | The sequence continues: reverse, rear pair blinking. |
-| F5 | Watch the turn. | One side's pair blinks; the turn direction matches it. |
-| F6 | Block the rear-left sensor. | Stop → forward creep → stop → resume. |
+| F1 | At power-up all four LEDs come on for 1 s, then all four go off for 1 s. | Startup signal. The indicators only work once the pins are moved off the shield — [12 §7](12_Final_Implementation.md#7-pin-conflict--verification). |
+| F2 | After 2 s the robot starts driving, front pair on, rear pair off. | Normal forward. |
+| F3 | Block the front-left sensor. | The robot stops at the next sensor read — which may be immediately, or up to 5000 ms after the last obstacle sequence. All four LEDs on. |
+| F4 | Release it. | The sequence continues regardless: reverse 2 s, rear pair blinking. |
+| F5 | Watch the turn. | The robot turns left or right; **the opposite pair blinks**. The indicators do not indicate the turn direction — [12 §8](12_Final_Implementation.md#why-the-indicators-blink-on-the-opposite-side). |
+| F6 | Block the rear-left sensor. | Stop 1 s → forward 0.5 s → stop 0.3 s → resume. |
 | F7 | Block both front sensors. | Same as F3 (OR logic). |
 | F8 | Block front and rear at once. | The front sequence wins. |
+| F9 | Introduce a new obstacle during the reverse. | **Nothing happens until the sequence ends.** This is the blocking defect, confirmed — [07 §5](07_Software_Architecture.md#5-why-that-matters-here). |
 
 ## 9. Stage G — the complete robot
 
@@ -185,7 +194,7 @@ behaviour matched the datasheet description of the module.
 | T4 | narrow gap | two boxes forming a 25 cm gap | turns until the path is free | pass |
 | T5 | power removed | disconnect the pack while driving | stops within one poll interval | pass |
 | T6 | dark floor | low ambient light | detection range changes | **known limit** |
-| T7 | obstacle appears during the reverse | box moved in behind during `REVERSE` | not re-evaluated until `FORWARD` | **known limit**, see [08 §7](08_Algorithm.md#7-why-the-sensor-read-is-inside-the-forward-case) |
+| T7 | obstacle appears during the reverse | box moved in behind during `REVERSE` | not re-evaluated until `FORWARD` | **known limit**, see [08 §7](08_Algorithm.md#4-case-1--obstacle-in-front) |
 | T8 | glossy floor | polished board | specular reflection can give a false trigger | **known limit** |
 
 T6, T7 and T8 are listed as limits rather than failures because the final design

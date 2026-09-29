@@ -2,7 +2,7 @@
 
 > **This is project history, not the final design.**
 > The final motor mapping is in
-> [12 Final Implementation §3](../docs/12_Final_Implementation.md#3-final-motor-mapping).
+> [12 Final Implementation §3](../docs/12_Final_Implementation.md#3-motor-mapping).
 > The fix described here was made **in the wiring**; the firmware contains no
 > per-motor inversion.
 
@@ -135,7 +135,7 @@ before believing anything the firmware appears to be doing.
 |---|---|
 | A motor has no permanent VCC/GND; red/black is a convention | [05 Wiring §4](../docs/05_Wiring.md#4-motor-wiring-and-the-leftright-mirror) |
 | Left and right motors are a mirrored pair and must be wired mirrored | [05 Wiring §4](../docs/05_Wiring.md#4-motor-wiring-and-the-leftright-mirror) |
-| Fix direction in the wiring, never in the code | [07 §10](../docs/07_Software_Architecture.md#10-afmotor-and-the-direction-constants) |
+| Fix direction in the wiring, never in the code | [07 §10](../docs/07_Software_Architecture.md#11-afmotor-and-the-direction-constants) |
 | Test one channel at a time, on blocks | [09 Testing stage C](../docs/09_Testing.md#5-stage-c--one-motor-at-a-time) |
 | "Works on blocks" ≠ "works on the floor" | [10 Troubleshooting §2](../docs/10_Troubleshooting.md#2-motors-do-not-move-together) |
 | Check the wheels before believing the firmware | [10 Troubleshooting §4](../docs/10_Troubleshooting.md#4-wheels-coming-loose-on-the-shaft) |

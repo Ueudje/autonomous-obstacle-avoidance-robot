@@ -82,15 +82,16 @@ The general lesson is written up in
 One failure is worth recording in full, because it wasted the most time.
 
 **Symptom.** The robot, driving normally, would suddenly stop; the four LEDs
-would run the startup blink for 3 s; then it would drive again, as if it had
-just been powered up.
+would run the startup signal; then it would drive again, as if it had just been
+powered up.
 
 **First hypothesis.** A software fault — a sensor reading that put the firmware
-into `STATE_STARTUP`, or a bad state transition.
+into its startup state, or a bad state transition.
 
-**Why that hypothesis was wrong.** `STATE_STARTUP` is only ever entered from
-`setup()`. There is no path from any other state back into it. The firmware
-cannot restart itself.
+**Why that hypothesis was wrong.** The startup sequence is only ever entered from
+`setup()`. There is no path from any other state back into it — the firmware
+cannot restart itself, in the version that was running or in the one now
+shipped.
 
 **Test.** Watch what the LEDs did immediately *before* the blink. They were all
 dark for a moment — including the front pair that should have been lit while

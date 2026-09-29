@@ -4,6 +4,10 @@
 **Platform:** Arduino Uno (ATmega328P) + L293D / Adafruit Motor Shield V1-compatible shield
 **Firmware:** [`src/robot/Robot.ino`](../src/robot/Robot.ino)
 **Status:** final implementation documented, with the full development history kept in [`history/`](../history/)
+**Read this first:** the firmware drives three indicator pins that the motor
+shield already owns, and blocks the sensor scan for up to 5 s at a time. Both are
+documented rather than hidden — see [12 §7](12_Final_Implementation.md#7-pin-conflict--verification)
+and [07 §5](07_Software_Architecture.md#5-why-that-matters-here).
 
 ---
 
@@ -15,13 +19,17 @@ the space in front of and behind it with four infrared sensors, and reacts:
 | Situation | Reaction |
 |---|---|
 | Clear ahead | Drive forward. Front LEDs steady, rear LEDs off. |
-| Obstacle in front | Stop with all four LEDs on → reverse while the rear LEDs blink → pick a turn direction at random → turn in place while the two LEDs of that side blink → resume forward. |
-| Obstacle behind | Stop → drive forward → stop again → resume normal forward. |
-| Power-on | 3 s safety delay, all four LEDs blinking, then normal autonomous driving. |
+| Obstacle in front | Stop with all four LEDs on, 1 s → reverse for 2 s while the rear LEDs blink → stop again, 1 s → pick a turn direction at random and turn for 1 s → resume forward. |
+| Obstacle behind | Stop, 1 s → drive forward 0.5 s → stop, 0.3 s → resume normal forward. |
+| Power-on | 2 s: all four LEDs on for 1 s, then off for 1 s. The robot moves the instant the second second ends. |
 
-Every one of these steps is produced by a non-blocking state machine driven by
-`millis()`. The sketch contains **no `delay()` call at all** — see
-[08 — Algorithm](08_Algorithm.md).
+The three cases are three `if` branches in `loop()`. Two of them run on
+`millis()` deadlines; the rest of the sketch uses `delay()` — **ten
+times** — so the robot is blind for up to **5000 ms** during a front-obstacle
+sequence. That contradicts the brief's non-blocking requirement, and the
+sequence is reported as it is rather than as it should be — see
+[08 — Algorithm](08_Algorithm.md) and
+[02 §4 N1](02_Requirements.md#4-non-functional-requirements).
 
 ![Robot overview](../images/robot_overview.png)
 
@@ -52,9 +60,9 @@ reversing. The heights above are the approximate values from the project brief.
 |---|---|---|
 | Controller | Arduino Uno | ATmega328P, 14 digital + 6 analog-capable pins |
 | Motor driver | L293D / AFMotor shield V1 | 4 channels M1–M4, uses 8 Arduino pins |
-| Actuators | 4 DC geared motors | speed 150 / 255 in the final firmware |
-| Sensors | 4 × FC-51 IR module | digital OUT, one per chassis corner |
-| Indicators | 4 × 5 mm LED + resistor | 2 red front, 2 white rear |
+| Actuators | 4 DC geared motors | `setSpeed(150)`, set once in `setup()` and never changed |
+| Sensors | 4 × FC-51 IR module | comparator OUT read with `analogRead()`, one per chassis corner, on `A0`–`A3` |
+| Indicators | 4 × 5 mm LED + resistor | 2 red front, 2 white rear — **all four pins conflict with the shield** |
 | Power | 2 × 3.7 V 18650 in series | 7.4 V motor rail, capacity to be verified |
 
 ## 4. How the repository is organised
@@ -83,7 +91,7 @@ reversing. The heights above are the approximate values from the project brief.
 | [10 Troubleshooting](10_Troubleshooting.md) | Problem → Cause → Test → Observation → Fix → Lesson |
 | [11 Power System](11_Power_System.md) | voltage vs current vs capacity vs startup current |
 | [12 Final Implementation](12_Final_Implementation.md) | **the definitive hardware, wiring, code and pin-conflict check** |
-| [13 Future Improvements](13_Future_Improvements.md) | what was deliberately left out |
+| [13 Future Improvements](13_Future_Improvements.md) | the faults to fix first, then what was deliberately left out |
 
 ## 5. Reading rules for this documentation
 
@@ -95,6 +103,10 @@ reversing. The heights above are the approximate values from the project brief.
    never a guessed number presented as fact.
 3. **The code is the reference.** Every pin, timing and behaviour claimed in the
    documentation can be checked in [`src/robot/Robot.ino`](../src/robot/Robot.ino).
+   Where the code is at fault, the documentation says so: the four indicator
+   pins, the 5 s blind period, the turn indicators on the wrong side, the two
+   unnamed thresholds. Nothing has been "fixed" in the firmware, because the
+   firmware is published as supplied.
 
 ## 6. Next
 

@@ -187,77 +187,82 @@ will not tell you which one is wrong by looking. Write the mapping down.
 
 ## 7. The robot "goes deaf" while reversing
 
-**Problem.** With the first version of the firmware, the robot reversed for the
-full programmed time without reacting to anything, even if a box was placed in
-front of it during the reverse.
+**Problem.** The robot reverses for the full programmed time without reacting
+to anything, even if a box is placed in front of it during the reverse. **This
+is a live defect in the shipped firmware, not a historical one.**
 
-**Possible cause.** The sequence was written with `delay()`:
+**Possible cause.** The front-obstacle sequence in
+[`src/robot/Robot.ino`](../src/robot/Robot.ino) is written with `delay()`:
 
 ```cpp
-// first version - see history/initial_concept.md
+// src/robot/Robot.ino, loop() - the front-obstacle case
 stopMotors(true);
-delay(500);
-driveAllBackward();
-delay(700);
-turnInPlace(true);
-delay(600);
+delay(1000);
+moveBackward();                 // 2000 ms inside, one delay(10) per pass
+stopMotors(true);
+delay(1000);
+if (random(2) == 0) { turnLeft(); } else { turnRight(); }
 ```
 
-`delay()` stops the entire program. During those 1.8 s the sketch read no
-sensors at all, and the LED blink could not run either.
+`delay()` stops the entire program, and so does the body of the two timed
+`while` loops. Across the whole sequence — 1000 + 2000 + 1000 + 1000 ms — the
+sketch reads **no sensor at all**. The indicator blink is the only thing that
+keeps running, because it lives inside those three loops.
 
 **Test.** Put an obstacle in front of the robot during the reverse phase and
-watch whether anything happens before the turn ends. Then repeat with the
-`millis()` version.
+watch whether anything happens before the turn ends. This is test F9 in
+[09 §8](09_Testing.md#8-stage-f--sensors-and-leds-together).
 
-**Observation.** The `delay()` version ignored the obstacle completely. The
-state-machine version is not *blind* in the same way — its loop keeps running,
-so the LED blink continues and the manoeuvre stays interruptible — but the
-sensors are still not re-read until the robot is back in `STATE_FORWARD`, so an
-obstacle that appears during the manoeuvre is likewise not acted on. This
-limitation is stated in
-[08 §7](08_Algorithm.md#7-why-the-sensor-read-is-inside-the-forward-case) and
-[13 §3](13_Future_Improvements.md#3-re-evaluate-obstacles-mid-sequence), and is
-test T7 in [09 §9](09_Testing.md#9-stage-g--the-complete-robot).
+**Observation.** Nothing happens. The robot completes all 5000 ms of the
+sequence and only then reads the sensors again. The same defect means a single
+false front reading costs the robot five seconds of blindness — and the reverse
+can carry it into whatever is behind it.
 
-**Fix.** Replace the blocking sequence with the eight-state machine in
-[`src/robot/Robot.ino`](../src/robot/Robot.ino). Every duration became a
-deadline compared against `millis()`; nothing waits.
+**Fix.** Move each step into a `millis()`-timed state so the sensor read stays
+at the top of the loop: `FORWARD → STOP_HOLD → REVERSE → TURN → FORWARD`. Two of
+the three delays then become state-exit deadlines. Scope and cost in
+[13 §1.1](13_Future_Improvements.md#11-make-the-loop-non-blocking); the
+behavioural comparison is in
+[08 §9](08_Algorithm.md#9-what-the-state-machine-would-have-done).
 
 **Lesson learned.** On a robot, time spent waiting is time not spent sensing.
-`millis() - previousMillis >= interval` lets several tasks share one loop.
+`millis() - previousMillis >= interval` lets several tasks share one loop. Using
+`millis()` for three loops and `delay()` everywhere else is not halfway to that —
+it is the same defect with extra steps.
 
 ## 8. The sensor logic is inverted
 
 **Problem.** The robot drove straight into obstacles, or refused to move at all.
 
 **Possible cause.** `OUT` is LOW on an obstacle — the opposite of the naive
-assumption. A firmware that reads `digitalRead(pin) == HIGH` as "obstacle" is
-exactly backwards.
-
-**Test.** Serial Monitor plus a `Serial.println()` of one sensor flag, with and
-without an obstacle in front of the module
-([09 Testing step 4](09_Testing.md#step-4--lowhigh-sensor-logic)).
-
-**Observation.** The flag went to `1` when the obstacle **left** the field.
-
-**Fix.** `#define SENSOR_ACTIVE_LOW 1`, with the comparison done in exactly one
-place:
+assumption. The shipped firmware encodes that assumption in its comparison:
 
 ```cpp
-bool isObstacle(uint8_t pin) {
-  int level = digitalRead(pin);
-#if SENSOR_ACTIVE_LOW
-  return level == LOW;
-#else
-  return level == HIGH;
-#endif
-}
+// src/robot/Robot.ino, loop()
+if (frontLeft < 200 || frontRight < 200) { ... }   // obstacle
+if (backLeft  < 200 || backRight  < 200) { ... }   // obstacle
 ```
 
-**Lesson learned.** One place decides the polarity. Four copies of the
-comparison is four chances to get it wrong, and a build with a different module
-batch should be fixable with a one-character change.
+A module that reports HIGH while blocked reads ≈ 1023 here, fails both tests,
+and the robot drives straight through everything.
+
+**Test.** Read one pin with and without an obstacle in front of the module
+([09 Testing step 4](09_Testing.md#step-4--lowhigh-sensor-logic)). A direct
+`Serial.print()` will not work until the indicator pins are moved — the sketch
+sets `D0` to `OUTPUT`, which disables the USB serial TX line
+([12 §7](12_Final_Implementation.md#7-pin-conflict--verification)).
+
+**Observation on this build:** `OUT` fell to near 0 when blocked, so the test
+passed. **To be verified** on any other module.
+
+**Fix.** There is no `SENSOR_ACTIVE_LOW` switch in this firmware, so an inverted
+module is a two-site code change, not a one-character one. The proper fix moves
+the sensors to `A2`–`A5`, reads them with `digitalRead()`, and puts the polarity
+in a single `#define` — [13 §1.2](13_Future_Improvements.md#12-read-the-sensors-digitally).
+
+**Lesson learned.** One place decides the polarity. The shipped firmware has
+**two** comparison sites — four comparisons — all writing the literal `200`, so the two can drift
+apart — and no switch at all.
 
 ## 9. The robot stops unexpectedly / brown-outs
 
@@ -301,6 +306,8 @@ fruitless search through the sensor code.
 | Two motors do not start on the floor | supply current capability | §2, §9 |
 | Phantom obstacles | trimpot, cable routing, common ground | §5 |
 | One sensor does nothing | pin-to-corner mapping | §6 |
-| Robot ignores a new obstacle during a manoeuvre | `delay()` still in the sketch? | §7 |
-| Robot drives into obstacles | `SENSOR_ACTIVE_LOW` | §8 |
+| Robot ignores a new obstacle during a manoeuvre | **expected** — the loop blocks for up to 5000 ms | §7 |
+| Robot drives into obstacles | sensor polarity: is `OUT` LOW when blocked? | §8 |
+| An indicator flickers or a motor misbehaves | the four indicator pins are double-booked with the shield | [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) |
+| Serial Monitor is dead | `pinMode(0, OUTPUT)` in `setup()` | [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) |
 | Uno restarts, startup blink repeats | supply voltage under load | §9 |

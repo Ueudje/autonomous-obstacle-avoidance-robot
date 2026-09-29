@@ -27,8 +27,8 @@ The project tested **generic WZS 18650 cells labelled 6800 mAh** and they did
 * the rear pair started less often than the front pair;
 * the pack behaved inconsistently between charges, and between two packs that
   were supposed to be identical;
-* the Uno occasionally restarted under load — the 3 s startup blink appeared
-  again mid-run.
+* the Uno occasionally restarted under load — the startup signal appeared again
+  mid-run.
 
 **What this does and does not mean.**
 
@@ -126,7 +126,7 @@ final design.
 * Keep the pack away from heat and out of direct sun.
 * If a cell becomes hot, swollen or smells unusual, stop using it.
 * Add an inline fuse once the current is known (see
-  [13 Future Improvements](13_Future_Improvements.md#6-power-and-measurement-improvements)).
+  [13 Future Improvements](13_Future_Improvements.md#8-power-and-measurement-improvements)).
 
 ## 8. How to characterise a pack before trusting it
 

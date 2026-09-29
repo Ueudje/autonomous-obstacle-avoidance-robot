@@ -89,16 +89,23 @@ All logic is 5 V CMOS. There is no 3.3 V part and no level shifter in this build
 
 | Signal | Driver | Receiver | Level |
 |---|---|---|---|
-| FC-51 `OUT` → `A2..A5` | LM393 comparator output | ATmega328P GPIO with internal pull-up | 0 V / ≈ 5 V |
-| Uno `D2/D9/D10/D13` → LED anode | ATmega328P GPIO | LED + series resistor | 0 V / ≈ 5 V |
+| FC-51 `OUT` → `A0..A3` | LM393 comparator output | ATmega328P analog input | 0 V / ≈ 5 V |
+| Uno `D6/D0/D12/D3` → LED anode | ATmega328P GPIO | LED + series resistor | 0 V / ≈ 5 V |
 | Uno `D3/D5/D6/D11` → shield PWM | ATmega328P PWM | L293D enable | 0 V / 5 V |
 | Uno `D4/D7/D8/D12` → shield | ATmega328P GPIO | 74HC595 | 0 V / 5 V |
 
-`digitalRead()` on `A2..A5` reads those pins as ordinary digital inputs; the
-ATmega328P enables the input buffer on the analog pins when they are used as
-GPIO. `pinMode(pin, INPUT)` is still called in `setup()` so the intent is
-explicit even though the internal pull-ups are left disabled — the FC-51 output
-stage drives the line.
+The firmware calls `analogRead()` on `A0..A3`, so the analog input path is what
+carries the signal; `pinMode(pin, INPUT)` is still called in `setup()` so the
+intent is explicit even though the internal pull-ups are left disabled — the
+FC-51 output stage drives the line. The reading is a comparator level, so it
+carries one bit of information, not a distance; see
+[07 §6](07_Software_Architecture.md#6-why-the-sensors-are-read-with-analogread).
+
+The indicator row of that table lists the pins **in the sketch**. Three of them
+are already driven by the shield — the bottom two rows of the same table — so
+those indicator lines do not carry a signal of their own. The conflict is
+worked through in
+[12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
 
 ## 6. Grounding and noise
 
@@ -114,14 +121,17 @@ stage drives the line.
 
 An important distinction that the project documentation makes repeatedly:
 
-* A2–A5 are **printed** in the ANALOG header of the Uno.
+* A0–A5 are **printed** in the ANALOG header of the Uno.
 * A2–A5 are **ordinary GPIO pins** (digital 16, 17, 18, 19) and can be used with
   `digitalRead()`, `digitalWrite()` and `pinMode()`.
 * A0 and A1 cannot: on the ATmega328P they are analog-input-only and
   `digitalRead()`/`digitalWrite()` do not work on them.
 
-This is why the four IR modules are on A2–A5 and not on A0/A1. The full check is
-in [12 Final Implementation §7](12_Final_Implementation.md#7-pin-conflict--verification).
+The supplied firmware puts the four IR modules on **A0–A3** and reads them with
+`analogRead()`, which is correct for the way it is written — but it means a
+later move to `digitalRead()` has to shift the sensors to A2–A5. The full check
+is in [12 §7](12_Final_Implementation.md#7-pin-conflict--verification) and the
+move is in [13 §1.2](13_Future_Improvements.md#12-read-the-sensors-digitally).
 
 ## 8. The complete connection list
 
@@ -137,11 +147,11 @@ in [12 Final Implementation §7](12_Final_Implementation.md#7-pin-conflict--veri
 | Shield `M4` | front-right motor | channel 4 |
 | Uno `5V` | FC-51 `VCC` ×4 | module supply |
 | FC-51 `GND` ×4 | GND rail | module return |
-| FC-51 `OUT` ×4 | Uno `A2, A3, A4, A5` | obstacle input |
-| Uno `D2` | resistor → `LED_FRONT_LEFT` anode | indicator |
-| Uno `D9` | resistor → `LED_FRONT_RIGHT` anode | indicator |
-| Uno `D10` | resistor → `LED_REAR_LEFT` anode | indicator |
-| Uno `D13` | resistor → `LED_REAR_RIGHT` anode | indicator |
+| FC-51 `OUT` ×4 | Uno `A0, A1, A2, A3` | obstacle input |
+| Uno `D6` | resistor → `LED_FRONT_LEFT` anode | indicator — **conflicts with M3 PWM** |
+| Uno `D0` | resistor → `LED_FRONT_RIGHT` anode | indicator — **conflicts with USB TX** |
+| Uno `D12` | resistor → `LED_REAR_LEFT` anode | indicator — **conflicts with the 74HC595 latch** |
+| Uno `D3` | resistor → `LED_REAR_RIGHT` anode | indicator — **conflicts with M2 PWM** |
 | LED cathodes ×4 | GND rail | indicator return |
 
 Next: [05 Wiring](05_Wiring.md) shows how these are physically routed.

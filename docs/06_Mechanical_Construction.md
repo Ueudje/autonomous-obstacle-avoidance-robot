@@ -98,7 +98,11 @@ notes that cost time on this project.
 
 ## 11. Connecting the IR sensors
 
-30. VCC → 5 V, GND → common ground, OUT → `A2`/`A3`/`A4`/`A5` respectively.
+30. VCC → 5 V, GND → common ground, OUT → `A0`/`A1`/`A2`/`A3` respectively, as
+    the sketch reads them. If you are moving the sensors to `A2`–`A5` for the
+    digital rework in
+    [13 §1.2](13_Future_Improvements.md#12-read-the-sensors-digitally), wire them
+    there instead.
 31. Double-check the corner-to-pin order against the table in
     [05 Wiring §2](05_Wiring.md#2-sensors-the-four-ir-inputs); a swapped pair of
     rear sensors produces a robot that reacts to the wrong side.

@@ -95,13 +95,13 @@ real problems:
 
 ## 5. What changed, and why
 
-| Problem | What replaced it | Where it is documented |
-|---|---|---|
-| `delay()` froze the loop | an 8-state machine driven by `millis()` | [08 Algorithm](../docs/08_Algorithm.md) |
-| wrong sensor polarity | one place that decides it: `SENSOR_ACTIVE_LOW` | [07 §6](../docs/07_Software_Architecture.md#6-why-the-sensors-are-read-digitally) |
-| no rear sensing | `REAR_BRAKE` / `REAR_CREEP` / `REAR_SETTLE` | [08 §5](../docs/08_Algorithm.md#5-rear-obstacle-sequence) |
-| nothing visible about the state | 4 indicator LEDs, 2 red front / 2 white rear | [12 §5](../docs/12_Final_Implementation.md#5-final-led-mapping) |
-| no safety at power-on | a 3 s startup delay with all four LEDs blinking | [12 §8](../docs/12_Final_Implementation.md#8-final-robot-behaviour) |
+| Problem | What it was replaced with | Shipped? | Where it is documented |
+|---|---|---|---|
+| `delay()` froze the loop | an 8-state machine driven by `millis()` | **no** — the loop still blocks | [13 §1.1](../docs/13_Future_Improvements.md#11-make-the-loop-non-blocking) |
+| wrong sensor polarity | one place that decides it: `SENSOR_ACTIVE_LOW` | **no** — no switch, two literal `200` tests | [07 §6](../docs/07_Software_Architecture.md#6-why-the-sensors-are-read-with-analogread) |
+| no rear sensing | stop → forward creep → stop | **yes**, as a blocking sequence | [08 §6](../docs/08_Algorithm.md#6-case-2--obstacle-behind) |
+| nothing visible about the state | 4 indicator LEDs, 2 red front / 2 white rear | **yes**, but on four pins the shield owns | [12 §5](../docs/12_Final_Implementation.md#5-indicator-behaviour) |
+| no signal at power-on | 2 s: all four LEDs on, then off | **yes** | [12 §8](../docs/12_Final_Implementation.md#8-final-robot-behaviour) |
 
 ## 6. The lesson from this stage
 

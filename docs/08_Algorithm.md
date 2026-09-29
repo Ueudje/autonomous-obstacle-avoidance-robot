@@ -1,10 +1,9 @@
 # 08 — Algorithm
 
-The behaviour that is actually implemented in
-[`src/robot/Robot.ino`](../src/robot/Robot.ino) — not an idealised robot, and
-not a different robot from the one in the history pages.
+What the firmware in [`src/robot/Robot.ino`](../src/robot/Robot.ino) actually
+does, in the order it does it. Every number here is in the source.
 
-![Algorithm flowchart](../diagrams/algorithm_flowchart.png)
+![Control flow](../diagrams/algorithm_flowchart.png)
 
 ---
 
@@ -12,186 +11,166 @@ not a different robot from the one in the history pages.
 
 ```text
 setup:
-    configure the four IR pins as inputs
-    configure the four LED pins as outputs
-    all LEDs off, motors released
-    randomSeed(micros())
-    enter STARTUP
+    sensor pins  -> INPUT          (A0, A1, A2, A3)
+    LED pins     -> OUTPUT         (D6, D0, D12, D3)
+    all motors setSpeed(150)
+    randomSeed(analogRead(A5))
+    all four LEDs ON,  wait 1000 ms
+    all four LEDs OFF, wait 1000 ms
 
-loop:                                   -- runs thousands of times per second
-    update the active LED blink group   -- non-blocking, 250 ms half-period
+loop, forever:
+    read  A0, A1, A2, A3            (analogRead, 0..1023)
 
-    switch (state):
-
-      STARTUP:
-          if 3 s have passed:
-              read the four sensors
-              go FORWARD
-
-      FORWARD:
-          if 50 ms have passed since the last scan:
-              read the four sensors
-              if front left OR front right sees an obstacle:  go STOP_HOLD
-              else if rear left OR rear right sees one:      go REAR_BRAKE
-
-      STOP_HOLD:                        -- all four LEDs on
-          if 500 ms have passed:  go REVERSE
-
-      REVERSE:                          -- rear LEDs blink
-          if 700 ms have passed:  go TURN
-
-      TURN:                             -- LEDs of the chosen side blink
-          pick a direction at random:  turnLeft = (random(0, 2) == 0)
-          if turnLeft:  left wheels backward, right wheels forward
-          else:         left wheels forward,  right wheels backward
-          if 600 ms have passed:  go FORWARD
-
-      REAR_BRAKE:                       -- front LEDs on, motors released
-          if 300 ms have passed:  go REAR_CREEP
-
-      REAR_CREEP:                       -- driving forward, rear LEDs blink
-          if 600 ms have passed:  go REAR_SETTLE
-
-      REAR_SETTLE:                      -- front LEDs on, motors released
-          if 300 ms have passed:  go FORWARD
+    if A0 < 200 or A1 < 200:                        # obstacle in front
+        stopMotors(allLedsOn = true)                 # LEDs all on
+        wait 1000 ms
+        moveBackward()                               # 2000 ms, rear pair blinks
+        stopMotors(allLedsOn = true)
+        wait 1000 ms
+        if random(2) == 0:  turnLeft()               # 1000 ms
+        else:                turnRight()             # 1000 ms
+    else if A2 < 200 or A3 < 200:                    # obstacle behind
+        stopMotors(allLedsOn = true)
+        wait 1000 ms
+        moveForward()                                # 500 ms
+        stopMotors(allLedsOn = true)
+        wait 300 ms
+    else:
+        moveForward()                                # no timing
 ```
 
-The `pick a direction` line in `TURN` is the only decision that is randomised,
-and it is taken **once**, when the state is entered — not on every pass through
-the loop. The random choice therefore holds for the whole 600 ms turn.
+## 2. `setup()` — once, 2 s
 
-## 2. The state table
+| Step | Code | Notes |
+|---|---|---|
+| 1 | `pinMode(IR_*, INPUT)` | `A0`, `A1`, `A2`, `A3` |
+| 2 | `pinMode(LED_*, OUTPUT)` | `D6`, `D0`, `D12`, `D3` — see [12 §7](12_Final_Implementation.md#7-pin-conflict--verification) |
+| 3 | `motor1..4.setSpeed(150)` | set once; never changed again |
+| 4 | `randomSeed(analogRead(5))` | `A5` is otherwise unused |
+| 5 | all LEDs `HIGH`, `delay(1000)` | one second of "all on" |
+| 6 | all LEDs `LOW`, `delay(1000)` | one second of "all off" |
 
-| State | Motors | LEDs | Exit condition | Next |
+The two seconds are a power-on signal, not a safety delay of any consequence:
+the robot starts moving the moment the second `delay()` returns, and there is no
+opportunity to interrupt it. Anyone putting the robot down by hand needs those
+two seconds and no more.
+
+## 3. The sensor read
+
+```cpp
+int frontLeft  = analogRead(IR_FRONT_LEFT);    // A0
+int frontRight = analogRead(IR_FRONT_RIGHT);   // A1
+int backLeft   = analogRead(IR_BACK_LEFT);     // A2
+int backRight  = analogRead(IR_BACK_RIGHT);    // A3
+```
+
+Four reads, no delay between them, and the values are used only in the two
+comparisons below.
+
+**Threshold.** `200`, written inline at both test sites. An FC-51's `OUT` pin
+is a comparator output, so a LOW reads as roughly `0` and a HIGH as roughly
+`1023`; the threshold only has to sit between those two levels, and the real
+adjustment is the module's own trimpot. A module that pulls `OUT` **high** while
+blocked would read ≈ `1023` and never trigger — there is no polarity switch in
+this firmware, and no hysteresis, so a marginal reading can flip the robot into
+a full 5 s sequence on a single sample.
+
+## 4. Case 1 — obstacle in front
+
+Entered when `frontLeft < 200 || frontRight < 200`. Total time: **5000 ms**, and
+no sensor is read for any of it.
+
+| # | Call | Duration | Motors | Indicators |
 |---|---|---|---|---|
-| `STATE_STARTUP` | released | all four blink | `STARTUP_DELAY_MS` 3000 | `STATE_FORWARD` |
-| `STATE_FORWARD` | all forward, speed 150 | front pair on | front obstacle | `STATE_STOP_HOLD` |
-| | | | rear obstacle (front still clear) | `STATE_REAR_BRAKE` |
-| | | | otherwise | stays |
-| `STATE_STOP_HOLD` | released | **all four on** | `STOP_HOLD_MS` 500 | `STATE_REVERSE` |
-| `STATE_REVERSE` | all backward, speed 150 | rear pair blink | `REVERSE_MS` 700 | `STATE_TURN` |
-| `STATE_TURN` | turn in place, speed 150 | left **or** right side blinks | `TURN_MS` 600 | `STATE_FORWARD` |
-| `STATE_REAR_BRAKE` | released | front pair on | `REAR_PAUSE_MS` 300 | `STATE_REAR_CREEP` |
-| `STATE_REAR_CREEP` | all forward, speed 150 | rear pair blink | `REAR_CREEP_MS` 600 | `STATE_REAR_SETTLE` |
-| `STATE_REAR_SETTLE` | released | front pair on | `REAR_PAUSE_MS` 300 | `STATE_FORWARD` |
+| 1 | `stopMotors(true)` then `delay(1000)` | 1000 ms | released | all four on |
+| 2 | `moveBackward()` | 2000 ms | all four `BACKWARD` | rear pair blinking |
+| 3 | `stopMotors(true)` then `delay(1000)` | 1000 ms | released | all four on |
+| 4 | `turnLeft()` or `turnRight()` | 1000 ms | see below | the *opposite* pair blinking |
+| 5 | `stopMotors(true)` at the end of the turn | — | released | all four on |
 
-Timing constants in the sketch:
+`random(2) == 0` picks the direction, once, in step 4. The two turn functions
+each end by releasing the motors and lighting all four indicators, so the robot
+comes out of a turn stationary with everything on until the next `loop()` pass
+reaches `moveForward()`.
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `STARTUP_DELAY_MS` | 3000 | safety delay at power-on |
-| `OBSTACLE_POLL_MS` | 50 | how often the four sensors are read |
-| `STOP_HOLD_MS` | 500 | visible "stopped" indication |
-| `REVERSE_MS` | 700 | backing away from the obstacle |
-| `TURN_MS` | 600 | in-place turn |
-| `REAR_PAUSE_MS` | 300 | the two rear-sequence stops |
-| `REAR_CREEP_MS` | 600 | the rear-sequence forward creep |
-| `LED_BLINK_MS` | 250 | blink half-period (on and off) |
-
-## 3. Front-obstacle sequence
-
-![Testing - reaction timeline](../images/testing.png)
-
-1. **Stop.** `beginStopHold()` calls `stopMotors(true)`, which issues `RELEASE`
-   on all four channels, sets the speed to 0 and lights **all four LEDs**. The
-   500 ms hold makes the stop visible from outside the robot.
-2. **Reverse.** `beginReverse()` sets the speed back to 150 and runs all four
-   motors `BACKWARD`. The rear pair blinks at 250 ms per half-period.
-3. **Choose a direction.** `random(0, 2) == 0` decides left or right, once.
-4. **Turn.** `turnInPlace()` reverses the left pair and runs the right pair
-   forward for a left turn, and the opposite for a right turn. The two LEDs of
-   the chosen side blink, so the turn is visible.
-5. **Resume.** After 600 ms the robot returns to `STATE_FORWARD`.
-
-The loop itself keeps running at full speed throughout — a `case` in a state
-machine does not "pause" anything; only the *action* is different. What does
-**not** happen is a re-evaluation of the sensors during the manoeuvre: as
-[§7](#7-why-the-sensor-read-is-inside-the-forward-case) explains, `readSensors()`
-is called only in `STATE_FORWARD` (and once, at the end of the 3 s startup
-delay). The LED blink task does keep running at 250 ms throughout, so a stop, a
-reverse and a turn are all still visible.
-
-## 4. Which side blinks, and why
-
-| Turn | Blinking LEDs | Why |
-|---|---|---|
-| left | front-left **and** rear-left | a left turn is produced by the two left wheels moving in opposite directions to the two right wheels, so the indicator has to be on the side the robot is rotating *towards*. The pair — one red at the front, one white at the rear — spans the whole left side of the robot. |
-| right | front-right **and** rear-right | mirror of the above. |
-
-The indicator therefore names the direction of the turn, not the wheels that
-drive it. That matches the requirement that "the two LEDs belonging to the
-selected side blink together".
-
-## 5. Rear-obstacle sequence
-
-The rear case is deliberately **not** a mirror of the front case. A rear
-obstacle does not require the robot to escape — it requires it to find out
-whether it can move forward again:
-
-1. `REAR_BRAKE` — stop for 300 ms. The front pair stays on, because the robot
-   is still facing forward and the indication is "ready to go forward".
-2. `REAR_CREEP` — drive forward for 600 ms. If the obstacle was a person who
-   has just walked past, the robot gets moving again; the rear pair blinks to
-   show that something was detected behind.
-3. `REAR_SETTLE` — stop for 300 ms, front pair on again.
-4. Back to `STATE_FORWARD`.
-
-If the rear sensor still reports an obstacle 50 ms after returning to
-`STATE_FORWARD`, the whole sequence simply runs again. That is acceptable: it
-costs one stop-and-creep cycle, and it is what the final design specifies.
-
-`stopMotors(false)` is used in the rear sequence precisely so that the front
-pair keeps its own indication instead of being overwritten by the all-LEDs-on
-stop pattern.
-
-## 6. Priority when both ends are blocked
+**Step 2 detail.** `moveBackward()` is a timed loop:
 
 ```cpp
-if (frontBlocked()) {
-  beginStopHold();
-} else if (rearBlocked()) {
-  beginRearBrake();
+while (millis() - moveStart < 2000) {
+    if (millis() - lastBlink >= blinkInterval) { lastBlink = millis(); blinkState = !blinkState; }
+    motor1..4.run(BACKWARD);
+    front pair LOW;  rear pair = blinkState;
+    delay(10);
 }
 ```
 
-The front test is evaluated first, so a robot boxed in at both ends performs the
-front sequence. The rationale is simple: the front obstacle is the one that can
-stop the robot from doing damage, and the front sequence is the one that
-actively creates space.
+`blinkInterval` is 200 ms, so a full on-off cycle is 400 ms, and the loop is
+paced by `delay(10)` — the duration is accurate to about 10 ms. `blinkState`
+starts `false`, so the first 200 ms of the reverse are dark.
 
-## 7. Why the sensor read is inside the `FORWARD` case
+## 5. Which motors move, and which LEDs blink
 
-Only `STATE_FORWARD` calls `readSensors()` in its own `case`. The other states
-act on the readings that brought them there. This is a deliberate simplification:
+| Turn | `motor1` FL | `motor2` BL | `motor3` BR | `motor4` FR | Blinking LEDs |
+|---|---|---|---|---|---|
+| `turnLeft()` | `BACKWARD` | `BACKWARD` | `FORWARD` | `FORWARD` | **FR** and **BR** |
+| `turnRight()` | `FORWARD` | `FORWARD` | `BACKWARD` | `BACKWARD` | **FL** and **BL** |
 
-* the robot is committed to a 500 ms stop, a 700 ms reverse and a 600 ms turn —
-  a total of 1.8 s during which the obstacle picture is not re-evaluated;
-* re-evaluating mid-sequence would require extra states ("abort the reverse if
-  the front is suddenly clear"), which is a behaviour change, not an
-  optimisation;
-* therefore this is listed as future work rather than being quietly added —
-  see [13 Future Improvements](13_Future_Improvements.md#3-re-evaluate-obstacles-mid-sequence).
+In both rows the body rotates the way the function name says: in `turnLeft()` the
+left wheels roll backwards while the right wheels roll forwards, which turns the
+robot to the left.
 
-## 8. No blocking delay anywhere
+**But the indicators are on the other side.** `turnLeft()` blinks the two
+right-hand indicators. A watcher cannot tell from the blinking which way the
+robot is about to go — the opposite pair is lit. The same inversion applies in
+`turnRight()`. This is recorded in
+[12 §8](12_Final_Implementation.md#8-final-robot-behaviour) and the one-line fix
+is in
+[13 §4](13_Future_Improvements.md#4-the-turn-indicators-are-on-the-wrong-side).
 
-There is no `delay()` and no `delayMicroseconds()` in the final sketch. Every
-duration in the table above is a deadline compared against `millis()`:
+## 6. Case 2 — obstacle behind
 
-```cpp
-bool stateElapsed(unsigned long durationMs) {
-  return (millis() - stateStartedAt) >= durationMs;
-}
-```
+Entered when the front test is false and `backLeft < 200 || backRight < 200`.
+Total time: **1800 ms**.
 
-The consequence is that a single `loop()` serves the sensor scan, the LED blink
-and the motor commands simultaneously, which is the entire reason the
-behaviour is legible as a state machine. See
-[07 Software Architecture §4](07_Software_Architecture.md#4-timing-with-millis).
+| # | Call | Duration | Motors | Indicators |
+|---|---|---|---|---|
+| 1 | `stopMotors(true)` then `delay(1000)` | 1000 ms | released | all four on |
+| 2 | `moveForward()` then `delay(500)` | 500 ms | all four `FORWARD` | front pair on, rear pair off |
+| 3 | `stopMotors(true)` then `delay(300)` | 300 ms | released | all four on |
 
-## 9. Complexity, honestly
+This is the case most often misread. The rear reaction is **not** the front
+reaction with the words reversed: it stops, drives *forward* for half a second,
+stops, and resumes. The rear obstacle is not escaped from — it is checked.
 
-The whole firmware is 8 states, 1 transition per state exit, 4 inputs and 4
-outputs. It is a reaction machine, not a planner: it has no memory of the room,
-no goal beyond "keep moving", and no way to tell a wall from a chair. That is
-the documented design, and improving it is listed in
-[13 Future Improvements](13_Future_Improvements.md).
+## 7. Case 3 — clear path
+
+`moveForward()`: all four motors `FORWARD`, front pair on, rear pair off, and
+no timing at all. The loop then reads the four sensors again immediately, so in
+this case the scan rate is bounded only by the time `analogRead()` and the three
+`run()` calls take — milliseconds.
+
+## 8. Priority between the two obstacles
+
+The front test is the outer `if`, so a robot with an obstacle in front **and**
+behind runs the front sequence and never enters the rear one. There is no
+handling for "blocked on both sides at the start of a turn".
+
+## 9. What the state machine would have done
+
+For comparison, and because it is the version this documentation used to
+describe, a non-blocking version of the same behaviour keeps the sensor scan
+running at a fixed 50 ms through every manoeuvre, and the same sequences become
+eight named states with one timed exit each. That version was written and then
+superseded; the differences that matter to a reader are:
+
+| | This firmware | A `millis()` state machine |
+|---|---|---|
+| Longest blind period | 5000 ms | one loop pass |
+| Reaction to a new obstacle mid-sequence | none, until it ends | depends on the state |
+| Timings editable in one place | no — five separate literals | yes, one constant each |
+| Behaviour named in the source | no — three `if` branches | yes, eight states |
+
+See [13 §1](13_Future_Improvements.md#11-make-the-loop-non-blocking) for what the
+change would involve, and
+[history/final_changes.md](../history/final_changes.md) for how it ended up
+where it is.
