@@ -36,7 +36,7 @@ its own, no serial output.
 #define IR_BACK_LEFT A2      // free
 #define IR_BACK_RIGHT A3     // free
 #define LED_FRONT_LEFT 6     // TAKEN - M3 speed PWM
-#define LED_FRONT_RIGHT 0    // TAKEN - USB serial TX
+#define LED_FRONT_RIGHT 0    // TAKEN - USB serial RX
 #define LED_BACK_LEFT 12     // TAKEN - 74HC595 latch
 #define LED_BACK_RIGHT 3     // TAKEN - M2 speed PWM
 ```
@@ -123,7 +123,7 @@ in analog clothing.
 | Inverted-polarity modules | do **not** work: HIGH would read ≈ 1023 and never trigger |
 | Threshold tuning | the FC-51's own trimpot is the threshold; the `200` only has to sit between the two digital levels |
 | Hysteresis | none |
-| `A0` and `A1` | analog-only pins; they cannot be used with `digitalRead()` or `digitalWrite()` at all |
+| `A0` and `A1` | also support digital I/O as Uno pins 14 and 15 |
 
 The digital alternative — `digitalRead()` on `A2`–`A5` with a single
 `SENSOR_ACTIVE_LOW` switch — was written and then superseded. It is recorded in

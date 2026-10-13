@@ -154,9 +154,9 @@ Procedure:
 1. Upload the sketch.
 2. Read the four pins directly — a one-line sketch per pin, or a temporary
    `Serial.println(analogRead(A0));` in `loop()`. **Note:** the supplied
-   firmware sets `pinMode(0, OUTPUT)`, which takes the USB serial TX line away
-   from the board, so the Serial Monitor will not work until the indicator pins
-   are moved — [12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
+   firmware sets `pinMode(0, OUTPUT)`, which interferes with the USB serial RX
+   line. Serial input and uploads may fail until the indicator pins are moved —
+   [12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
 3. Hold an obstacle in front of the front-left module. The reading must **fall**
    to near 0. With nothing in range it should sit near 1023.
 4. If it rises instead, **your module reports HIGH for "obstacle"** and the robot
@@ -209,7 +209,7 @@ does not claim to handle them. They are the motivation for
 | Average and peak current | no current probe |
 | Motor startup / stall current | not taken from a datasheet, not measured |
 | Obstacle detection distance per surface | not characterised beyond a single cardboard box |
-| Turn-angle repeatability | the turn is a fixed 600 ms, not an angle, so it was not characterised |
+| Turn-angle repeatability | the turn is a fixed 1000 ms, not an angle, so it was not characterised |
 | Maximum speed on the floor | not measured |
 
 These are honest gaps, listed in

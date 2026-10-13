@@ -34,7 +34,7 @@ specifications, and where they disagree with this page, this page is right.
 | `IR_BACK_LEFT` | `A2` | analog input | back-left obstacle input | yes |
 | `IR_BACK_RIGHT` | `A3` | analog input | back-right obstacle input | yes |
 | `LED_FRONT_LEFT` | `6` | D6 | front-left indicator | **no — M3 speed PWM** |
-| `LED_FRONT_RIGHT` | `0` | D0 | front-right indicator | **no — USB serial TX** |
+| `LED_FRONT_RIGHT` | `0` | D0 | front-right indicator | **no — USB serial RX** |
 | `LED_BACK_LEFT` | `12` | D12 | back-left indicator | **no — 74HC595 latch** |
 | `LED_BACK_RIGHT` | `3` | D3 | back-right indicator | **no — M2 speed PWM** |
 
@@ -155,7 +155,7 @@ The Uno's own `D0` and `D1` are the USB serial lines.
 | `D6` | front-left LED | M3 speed PWM | **conflict** |
 | `D3` | back-right LED | M2 speed PWM | **conflict** |
 | `D12` | back-left LED | 74HC595 latch | **conflict** |
-| `D0` | front-right LED | USB serial TX | **conflict** |
+| `D0` | front-right LED | USB serial RX | **conflict** |
 
 **Three of the four indicators are wired to motor-control pins and the fourth
 is wired to the serial port.** The consequences are not cosmetic:
@@ -167,16 +167,15 @@ is wired to the serial port.** The consequences are not cosmetic:
   `latch_tx()`. The two can interleave, which can leave the 74HC595 holding a
   half-written output pattern — the L293D then sees a direction it was not asked
   for.
-* `pinMode(0, OUTPUT)` takes the USB-serial transmit line away from the
-  on-board USB interface, so the Serial Monitor is unusable and the
-  auto-reset upload path can be blocked.
+* `pinMode(0, OUTPUT)` interferes with the USB-serial receive line. Serial
+  input and uploads may fail while D0 is used this way.
 
 ### 7.3 What is still free
 
 | Pin | Status |
 |---|---|
 | `A4`, `A5` | free, and unused by the sketch |
-| `D1` | USB serial RX — keep it free |
+| `D1` | USB serial TX — keep it free |
 | `D2`, `D9`, `D10`, `D13` | free and LED-capable |
 | `A2`, `A3` | used by the sensors, but A2–A5 are also digital-capable |
 
@@ -187,13 +186,11 @@ sensor row is ever wanted ([13 §2](13_Future_Improvements.md#22-a-second-sensor
 
 ### 7.4 Two secondary observations
 
-* **`D0` is not merely occupied, it is the wrong kind of pin for this job.** It
-  is the one pin on the board that must stay an input for the board to be
-  usable at all.
-* **The two sensors on `A0` and `A1` are analog-only pins** on the ATmega328P:
-  `digitalRead()` and `digitalWrite()` do not work on them. The sketch only ever
-  calls `analogRead()`, so this is correct today, but it forecloses any later
-  change to digital sensing on those two corners.
+* **`D0` is the USB serial receive pin.** Driving it as an output can interfere
+  with serial reception and uploading sketches over USB.
+* `A0` and `A1` also support digital I/O on the Uno (digital pins 14 and 15).
+  The current sketch uses them as analog inputs, but they can be used with
+  `digitalRead()` if sensor handling is changed later.
 
 ### 7.5 The rule
 

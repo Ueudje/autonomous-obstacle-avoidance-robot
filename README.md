@@ -55,12 +55,12 @@ comparator level, that threshold only has to sit between the two digital levels.
 | `D6` | front-left LED | M3 speed PWM |
 | `D3` | back-right LED | M2 speed PWM |
 | `D12` | back-left LED | 74HC595 latch |
-| `D0` | front-right LED | USB serial TX |
+| `D0` | front-right LED | USB serial RX |
 
 The shield owns `D3, D4, D5, D6, D7, D8, D11, D12`, and `D0`/`D1` are the USB
 serial lines. Writing to `D6` or `D3` fights the shield's speed PWM; writing to
-`D12` races the shift-register latch; `pinMode(0, OUTPUT)` takes the serial port
-away from the board. The four sensor pins (`A0`–`A3`) are clear.
+`D12` races the shift-register latch; `pinMode(0, OUTPUT)` interferes with
+serial reception on D0 and can disrupt uploads. The four sensor pins (`A0`–`A3`) are clear.
 
 Four free LED-capable pins exist — `D2`, `D9`, `D10`, `D13` — so this is a
 four-line change, not a redesign. Full analysis and the verification method:

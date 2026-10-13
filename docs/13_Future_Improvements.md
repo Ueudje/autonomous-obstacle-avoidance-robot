@@ -67,10 +67,9 @@ compared in [08 §9](08_Algorithm.md#9-what-the-state-machine-would-have-done).
 `digitalRead()` with one `#define SENSOR_ACTIVE_LOW 1`. That restores the
 polarity switch, makes the reading a clean boolean, and frees `A0`/`A1`.
 
-**Why the move is necessary rather than optional:** `A0` and `A1` are
-analog-only pins on the ATmega328P. `digitalRead()` does not work on them at
-all, so a digital rework cannot keep the supplied sensor assignment. It is
-four `#define` lines — [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs).
+The Uno's `A0`–`A5` pins also support digital I/O, so moving the sensors is not
+required for a digital rework. This option uses `A2`–`A5` for consistency with
+the documented wiring plan — [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs).
 
 **Cost:** four `#define` lines and four `analogRead()` → `digitalRead()`
 changes; no hardware change beyond moving four wires.
@@ -110,7 +109,7 @@ not in the final firmware.
 ### 2.1 Move the indicators off the shield's pins
 
 **Now:** the four indicators are on `D6`, `D0`, `D12` and `D3` — the M3 speed
-PWM, the USB serial TX line, the 74HC595 latch, and the M2 speed PWM. All four
+PWM, the USB serial RX line, the 74HC595 latch, and the M2 speed PWM. All four
 conflict with something the shield or the board already owns. The derivation
 and the consequences are in
 [12 §7](12_Final_Implementation.md#7-pin-conflict--verification).
@@ -119,7 +118,7 @@ and the consequences are in
 |---|---|
 | An indicator flickers when a motor starts | `digitalWrite()` fights the shield's PWM |
 | A motor turns the wrong way after a write to an indicator | the 74HC595 latch can be written half-way through `latch_tx()` |
-| Serial Monitor is dead after upload | `pinMode(0, OUTPUT)` took the USB TX line away from the board |
+| Serial input or upload fails | `pinMode(0, OUTPUT)` interferes with USB serial RX |
 | `avrdude: stk500_recv()` | the auto-reset path is compromised by the same `D0` assignment |
 
 **Option — four lines, no hardware change.** `D2`, `D9`, `D10` and `D13` are
@@ -153,9 +152,8 @@ LED-capable pins free, and the four indicators need all of them.
 **Options if it is ever built:**
 
 * move to a board with more GPIO (a Mega, or an I/O expander on the I²C bus);
-* use `A0`/`A1` — free once §1.2 is done — for a second row, accepting that
-  those two corners would be analog-only and could never be switched to
-  `digitalRead()`;
+* use `A0`/`A1` — free once §1.2 is done — for a second row; these pins also
+  support digital I/O on the Uno;
 * use an I/O expander such as a PCF8574 for the second sensor row.
 
 This is the clearest example in the project of a good idea that the chosen

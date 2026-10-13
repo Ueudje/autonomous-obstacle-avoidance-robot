@@ -248,8 +248,8 @@ and the robot drives straight through everything.
 
 **Test.** Read one pin with and without an obstacle in front of the module
 ([09 Testing step 4](09_Testing.md#step-4--lowhigh-sensor-logic)). A direct
-`Serial.print()` will not work until the indicator pins are moved — the sketch
-sets `D0` to `OUTPUT`, which disables the USB serial TX line
+Serial input and uploads may fail until the indicator pins are moved — the
+sketch sets `D0` to `OUTPUT`, which interferes with the USB serial RX line
 ([12 §7](12_Final_Implementation.md#7-pin-conflict--verification)).
 
 **Observation on this build:** `OUT` fell to near 0 when blocked, so the test
@@ -309,5 +309,5 @@ fruitless search through the sensor code.
 | Robot ignores a new obstacle during a manoeuvre | **expected** — the loop blocks for up to 5000 ms | §7 |
 | Robot drives into obstacles | sensor polarity: is `OUT` LOW when blocked? | §8 |
 | An indicator flickers or a motor misbehaves | the four indicator pins are double-booked with the shield | [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) |
-| Serial Monitor is dead | `pinMode(0, OUTPUT)` in `setup()` | [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) |
+| Serial input or upload fails | `pinMode(0, OUTPUT)` in `setup()` | [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) |
 | Uno restarts, startup blink repeats | supply voltage under load | §9 |
