@@ -34,7 +34,7 @@ explicit list of everything the project brief does *not* fix.
 **Arduino Uno**, ATmega328P at 16 MHz, 32 KB flash, 2 KB SRAM.
 
 Digital I/O actually available on this board: D0–D13 plus A0–A5. D0/D1 are the
-USB serial lines and A0/A1 are analog-only on this chip. With the motor shield
+USB serial lines; A0–A5 can also serve as digital pins. With the motor shield
 fitted, the project uses the pins listed in
 [12 Final Implementation §6](12_Final_Implementation.md#2-final-pin-assignment-as-written-in-the-sketch).
 

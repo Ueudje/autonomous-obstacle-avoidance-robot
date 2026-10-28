@@ -52,10 +52,12 @@ away from the motor wiring.
 
 **The four sketch pins are legal.** `A0`–`A3` are real input pins and the sketch
 calls `analogRead()` on them and nothing else, so there is no fault here. What
-they cost is the option of switching to `digitalRead()` later: `A0` and `A1` are
-analog-only on the ATmega328P and cannot be used as digital pins at all, so a
-digital rework needs the sensors moved to `A2`–`A5`. That move is four
-`#define` lines — see
+they cost is that `A0` and `A1` are shared with the analog-input function and
+also have digital pin numbers 14 and 15 on the Uno. They can be read with
+`digitalRead()` too, so a digital rework does not require moving the sensors.
+For consistency with the wiring plan in [13 §1](13_Future_Improvements.md#12-read-the-sensors-digitally),
+the recommended digital assignment uses `A2`–`A5` and changes four `#define`
+lines — see
 [13 §1](13_Future_Improvements.md#12-read-the-sensors-digitally).
 
 > `OUT` is **LOW when an obstacle is present** on a standard FC-51 / LM393
@@ -126,14 +128,14 @@ the four LED pins in the sketch:
 | Sketch pin | Indicator | Owner | Result |
 |---|---|---|---|
 | `D6` | front left | M3 speed PWM | **conflict** |
-| `D0` | front right | USB serial TX | **conflict** |
+| `D0` | front right | USB serial RX | **conflict** |
 | `D12` | rear left | 74HC595 latch | **conflict** |
 | `D3` | rear right | M2 speed PWM | **conflict** |
 
 Writing to `D6` or `D3` contends with the shield's own PWM output; writing to
 `D12` contends with the shift-register latch the shield drives inside
-`latch_tx()`; and `pinMode(0, OUTPUT)` removes the serial port from the board,
-so the Serial Monitor dies and the auto-reset upload path can be blocked.
+`latch_tx()`; and `pinMode(0, OUTPUT)` interferes with the USB serial receive
+line, so uploads and serial input can be disrupted.
 
 **What is still free:** `D2`, `D9`, `D10`, `D13` — four pins, all LED-capable,
 all off the shield. That is exactly the number of indicators needed, so the fix
