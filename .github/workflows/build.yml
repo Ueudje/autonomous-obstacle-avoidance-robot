@@ -2,14 +2,17 @@ name: Build
 
 on:
   schedule:
-    # Runs daily at 09:00 AM UTC
     - cron: '0 9 * * *'
-  # Allows manual triggering from the GitHub Actions UI anytime
   workflow_dispatch:
 
 jobs:
   opencode:
     runs-on: ubuntu-latest
+
+    # ADD THIS BLOCK
+    permissions:
+      contents: write
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -21,8 +24,7 @@ jobs:
         run: |
           git config --global user.name "Ueudje"
           git config --global user.email "classlol72@gmail.com"
-          
-      # Adds a random delay (0-45 mins) so commits do not happen at the exact same minute daily
+
       - name: Random Delay
         run: sleep $((RANDOM % 2700))
 
@@ -35,7 +37,7 @@ jobs:
           model: google/gemini-3.6-flash
           prompt: |
             Read @PROMPT.txt if present. Perform necessary code improvements or routine updates.
-            
+
             Commit rules:
             - Use short, casual developer commit messages (e.g., "fix sensor timing", "refactor state machine", "update docs").
             - Do NOT mention AI, bots, OpenCode, or automation anywhere in commit messages or code comments.
