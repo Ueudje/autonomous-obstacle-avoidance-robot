@@ -2,7 +2,9 @@ name: Build
 
 on:
   schedule:
+    # Runs daily at 09:00 AM UTC
     - cron: '0 9 * * *'
+  # Allows manual triggering from the GitHub Actions UI anytime
   workflow_dispatch:
 
 permissions:
@@ -15,27 +17,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Configure Git User
         run: |
-          git config --global user.name "Ueudje"
-          git config --global user.email "classlol72@gmail.com"
+          git config --global user.name "YourGitHubUsername"
+          git config --global user.email "your-email@example.com"
           
+      # Adds a random delay (0-45 mins) so commits do not happen at the exact same minute daily
       - name: Random Delay
         run: sleep $((RANDOM % 2700))
 
-      - name: Make Routine Update and Push
+      - name: Make Human-Like Update
         run: |
-          # 1. Create or update a hidden log file (does not mess up your main project files)
-          echo "Automated routine check: $(date)" >> .github/routine-log.txt
-         
-          # 2. Stage the changes
-          git add .github/routine-log.txt
+          # 1. Arrays of casual, realistic commit messages and engineering notes
+          COMMITS=("update docs" "minor refactoring" "fix typo" "cleanup whitespace" "adjust sensor config notes" "wip: motor testing" "review pin mapping" "format text" "update scratchpad")
+          NOTES=("double check L293D current limits" "verify FC-51 infrared range" "review Arduino Uno memory usage" "test battery load on DC motors" "calibrate obstacle avoidance threshold" "organize cable management thoughts" "review H-bridge polarity")
           
-          # 3. Commit the changes using a casual message
-          git commit -m "update routine logs"
+          # 2. Select one random commit message and one random note
+          RANDOM_COMMIT=${COMMITS[$RANDOM % ${#COMMITS[@]}]}
+          RANDOM_NOTE=${NOTES[$RANDOM % ${#NOTES[@]}]}
           
-          # 4. Push to your repository
+          # 3. Append the realistic note to a developer scratchpad file
+          mkdir -p docs
+          echo "- $RANDOM_NOTE" >> docs/dev-scratchpad.md
+          
+          # 4. Stage, commit, and push
+          git add docs/dev-scratchpad.md
+          git commit -m "$RANDOM_COMMIT"
           git push origin main
