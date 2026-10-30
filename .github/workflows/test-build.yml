@@ -1,0 +1,42 @@
+name: Quick Test Build
+
+on:
+  schedule:
+    # Runs at 15:10 UTC (16:10 / 4:10 PM in Casablanca)
+    - cron: '08 15 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git User
+        run: |
+          git config --global user.name "YourGitHubUsername"
+          git config --global user.email "your-email@example.com"
+          
+      # The 45-minute delay is reduced to 10 seconds for immediate feedback
+      - name: Short Test Delay
+        run: sleep 10
+
+      - name: Make Human-Like Update
+        run: |
+          COMMITS=("test commit" "verify workflow timing")
+          NOTES=("testing cron schedule accuracy" "verifying UTC conversion")
+          
+          RANDOM_COMMIT=${COMMITS[$RANDOM % ${#COMMITS[@]}]}
+          RANDOM_NOTE=${NOTES[$RANDOM % ${#NOTES[@]}]}
+          
+          mkdir -p docs
+          echo "- $RANDOM_NOTE" >> docs/dev-scratchpad.md
+          
+          git add docs/dev-scratchpad.md
+          git commit -m "$RANDOM_COMMIT"
+          git push origin main
