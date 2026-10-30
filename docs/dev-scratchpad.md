@@ -1,0 +1,2 @@
+- double check L293D current limits
+- verify FC-51 infrared range
