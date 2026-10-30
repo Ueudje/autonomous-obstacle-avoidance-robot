@@ -3,7 +3,7 @@ name: Quick Test Build
 on:
   schedule:
     # Runs at 15:10 UTC (16:10 / 4:10 PM in Casablanca)
-    - cron: '08 15 * * *'
+    - cron: '14 16 * * *'
   workflow_dispatch:
 
 permissions:
