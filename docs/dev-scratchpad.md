@@ -2,3 +2,4 @@
 - verify FC-51 infrared range
 - verifying UTC conversion
 - review H-bridge polarity
+- verifying UTC conversion
