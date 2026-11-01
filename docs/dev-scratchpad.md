@@ -1,5 +1,0 @@
-- double check L293D current limits
-- verify FC-51 infrared range
-- verifying UTC conversion
-- review H-bridge polarity
-- verifying UTC conversion
