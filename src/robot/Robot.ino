@@ -13,6 +13,7 @@ AF_DCMotor motor3(3); // Back Right
 AF_DCMotor motor4(4); // Front Right
 // Blink timing
 const unsigned long blinkInterval = 200;
+const int OBSTACLE_THRESHOLD = 200;
 void setup() {
 pinMode(IR_FRONT_LEFT, INPUT);
 pinMode(IR_FRONT_RIGHT, INPUT);
@@ -100,10 +101,10 @@ void turnLeft() {
     motor2.run(BACKWARD);
     motor3.run(FORWARD);
     motor4.run(FORWARD);
-    digitalWrite(LED_FRONT_LEFT, LOW);
-    digitalWrite(LED_BACK_LEFT, LOW);
-    digitalWrite(LED_FRONT_RIGHT, blinkState);
-    digitalWrite(LED_BACK_RIGHT, blinkState);
+    digitalWrite(LED_FRONT_RIGHT, LOW);
+    digitalWrite(LED_BACK_RIGHT, LOW);
+    digitalWrite(LED_FRONT_LEFT, blinkState);
+    digitalWrite(LED_BACK_LEFT, blinkState);
     delay(10);
   }
   stopMotors(true);
@@ -122,10 +123,10 @@ void turnRight() {
     motor2.run(FORWARD);
     motor3.run(BACKWARD);
     motor4.run(BACKWARD);
-    digitalWrite(LED_FRONT_RIGHT, LOW);
-    digitalWrite(LED_BACK_RIGHT, LOW);
-    digitalWrite(LED_FRONT_LEFT, blinkState);
-    digitalWrite(LED_BACK_LEFT, blinkState);
+    digitalWrite(LED_FRONT_LEFT, LOW);
+    digitalWrite(LED_BACK_LEFT, LOW);
+    digitalWrite(LED_FRONT_RIGHT, blinkState);
+    digitalWrite(LED_BACK_RIGHT, blinkState);
     delay(10);
   }
   stopMotors(true);
@@ -135,7 +136,7 @@ void loop() {
   int frontRight = analogRead(IR_FRONT_RIGHT);
   int backLeft = analogRead(IR_BACK_LEFT);
   int backRight = analogRead(IR_BACK_RIGHT);
-  if (frontLeft < 200 || frontRight < 200) {
+  if (frontLeft < OBSTACLE_THRESHOLD || frontRight < OBSTACLE_THRESHOLD) {
     stopMotors(true);
     delay(1000);
     moveBackward();
@@ -146,7 +147,7 @@ void loop() {
     } else {
       turnRight();
     }
-  } else if (backLeft < 200 || backRight < 200) {
+  } else if (backLeft < OBSTACLE_THRESHOLD || backRight < OBSTACLE_THRESHOLD) {
     stopMotors(true);
     delay(1000);
     moveForward();
