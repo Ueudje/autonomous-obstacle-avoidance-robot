@@ -12,13 +12,17 @@ firmware. The two exceptions are §1 and §2: those are faults, not improvements
 and they are listed first because the robot does not work correctly without
 them.
 
+Two later items are done in the firmware and marked in the table: the named
+threshold (§3) and the turn-indicator side (§4). `src/robot/Robot.ino` is
+otherwise unchanged.
+
 | Priority | Item | Section |
 |---|---|---|
 | 1 | Stop blocking the loop for 5 s at a time | [§1.1](#11-make-the-loop-non-blocking) |
 | 2 | Read the sensors with `digitalRead()` and a polarity switch | [§1.2](#12-read-the-sensors-digitally) |
 | 3 | Move the four indicators off the shield's pins | [§2.1](#21-move-the-indicators-off-the-shields-pins) |
-| 4 | Put the turn indicators on the side the robot turns towards | [§4](#4-the-turn-indicators-are-on-the-wrong-side) |
-| 5 | Name the magic numbers | [§3](#3-three-naming-and-structure-fixes-worth-making) |
+| 4 | Put the turn indicators on the side the robot turns towards | [§4](#4-the-turn-indicators-are-on-the-wrong-side) — **done** |
+| 5 | Name the obstacle threshold | [§3](#3-three-naming-and-structure-fixes-worth-making) — **done** (threshold only) |
 | 6 | Filter the sensor readings | [§1.3](#13-re-read-the-sensors-more-than-once-per-poll) |
 
 ---
@@ -60,7 +64,7 @@ compared in [08 §9](08_Algorithm.md#9-what-the-state-machine-would-have-done).
 | No polarity switch | a module that pulls `OUT` high while blocked reads ≈ 1023 and **never triggers** |
 | No hysteresis | one marginal sample starts a full 5 s sequence |
 | Threshold is meaningless | the FC-51 output is a comparator level, so the "analog" reading carries no more information than one bit |
-| The threshold is un-named | `200` appears four times, in two statements, and can drift apart |
+| The cutoff is still an analog compare | the value is now `OBSTACLE_THRESHOLD` (`200`); the sketch still uses `analogRead()` |
 
 **Option:** move the sensors to `A2`–`A5` — which are ordinary GPIO, digital
 18–19 for `A2`/`A3` and digital 20–21 for `A4`/`A5` — and use
@@ -169,6 +173,10 @@ controller cannot afford.
 | `randomSeed(analogRead(5))` | `setup()` | `A5` is not connected to anything, so the seed is noise. Use a fixed seed, or read a real pin |
 | `blinkInterval` | declared between the pin defines and `setup()` | group it with the other timing constants, and name the other five durations to match |
 
+**Done for the threshold.** `const int OBSTACLE_THRESHOLD = 200` is in
+`Robot.ino`, and both tests in `loop()` use it. The `randomSeed` line,
+`blinkInterval` placement, and the `stopMotors` name are unchanged.
+
 **Also worth doing:** `stopMotors(bool allLedsOn = false)` drives the
 indicators as well as the motors, which the name does not suggest. Renaming it
 to something like `stopAndSignal(bool allOn)` costs nothing and removes a
@@ -191,8 +199,13 @@ watcher cannot tell from the indicators which way the robot is about to go.
 | `turnLeft()` | front right, back right | front left, back left |
 | `turnRight()` | front left, back left | front right, back right |
 
-**Not done**, because the firmware is published as supplied. The behaviour is
-documented in [12 §8](12_Final_Implementation.md#why-the-indicators-blink-on-the-opposite-side).
+**Done.** `turnLeft()` now blinks the left pair and `turnRight()` blinks the
+right pair. Motor directions were not changed. See
+[12 §8](12_Final_Implementation.md#turn-indicators-match-the-turn-direction).
+
+The paragraph above describes the old mismatch. It is kept so the fix stays
+readable. The current behaviour is in
+[12 §5](12_Final_Implementation.md#5-indicator-behaviour).
 
 ## 5. Turn by angle instead of by time
 
