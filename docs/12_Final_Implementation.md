@@ -67,12 +67,12 @@ int backLeft   = analogRead(IR_BACK_LEFT);
 int backRight  = analogRead(IR_BACK_RIGHT);
 ```
 
-and compared against a single hard-coded threshold of `200`:
+and compared against `OBSTACLE_THRESHOLD`, which is `200`:
 
 | Test | Meaning |
 |---|---|
-| `frontLeft < 200 \|\| frontRight < 200` | obstacle in front |
-| `backLeft < 200 \|\| backRight < 200` | obstacle behind |
+| `frontLeft < OBSTACLE_THRESHOLD \|\| frontRight < OBSTACLE_THRESHOLD` | obstacle in front |
+| `backLeft < OBSTACLE_THRESHOLD \|\| backRight < OBSTACLE_THRESHOLD` | obstacle behind |
 
 An FC-51 sits behind an LM393 comparator, so its `OUT` pin is a digital level
 presented as an analog value: close to `0` for LOW and close to `1023` for
@@ -81,9 +81,9 @@ and only for a module that pulls `OUT` LOW while an obstacle is in range. A
 module with inverted output polarity, or with a weak analog output, is not
 handled — there is no `SENSOR_ACTIVE_LOW`-style switch, and no hysteresis.
 
-Note that the threshold is written as a bare `200` at both test sites rather
-than as a named constant. That is how the sketch is written; [07 §3](07_Software_Architecture.md#3-two-raw-numbers-and-a-nameless-blink-interval)
-records it as a maintainability finding.
+The comparisons use `OBSTACLE_THRESHOLD`, defined as `200`. The value is
+unchanged; only the name is. [07 §3](07_Software_Architecture.md#3-two-raw-numbers-and-a-nameless-blink-interval)
+still describes the older literal form.
 
 ## 5. Indicator behaviour
 
@@ -99,14 +99,12 @@ all four indicators to `HIGH` (obstacle indication) or to `LOW` (all clear).
 | stopped, `allLedsOn = true` | on | on | on | on |
 | stopped, `allLedsOn = false` | off | off | off | off |
 | reversing (2 s) | off | off | **blink** | **blink** |
-| `turnLeft()` (1 s) | off | off | off | **blink** |
-| `turnRight()` (1 s) | **blink** | **blink** | off | off |
+| `turnLeft()` (1 s) | **blink** | off | **blink** | off |
+| `turnRight()` (1 s) | off | **blink** | off | **blink** |
 
 Blink half-period is `blinkInterval = 200` ms, so a full on-off cycle is
-400 ms. During a turn, the side that blinks is the **opposite** side to the one
-the robot rotates towards: `turnLeft()` drives the left motors backwards and the
-right motors forwards — turning the body left — while it blinks the
-right-hand pair. Section 8 explains that in full.
+400 ms. During a turn, the side that blinks is the side the robot rotates
+towards. Section 8 records the correction.
 
 ## 6. Timings, as coded
 
@@ -207,32 +205,29 @@ setup():  speeds 150, randomSeed, LEDs all on 1 s, LEDs all off 1 s
 loop():
    read A0, A1, A2, A3 with analogRead()
    |
-   +-- front blocked (A0 or A1 < 200) --> stopMotors(true)      1000 ms
+   +-- front blocked (below OBSTACLE_THRESHOLD) --> stopMotors(true)  1000 ms
    |     moveBackward()  all BACKWARD, back pair blinking      2000 ms
    |     stopMotors(true)                                      1000 ms
    |     random(2): turnLeft() or turnRight()                  1000 ms
    |        (turn ends with stopMotors(true))
    |
-   +-- rear blocked (A2 or A3 < 200) --> stopMotors(true)       1000 ms
+   +-- rear blocked (below OBSTACLE_THRESHOLD) --> stopMotors(true)   1000 ms
    |     moveForward()  front pair on, back pair off            500 ms
    |     stopMotors(true)                                       300 ms
    |
    +-- clear --> moveForward()  front pair on, back pair off     no timing
 ```
 
-### Why the indicators blink on the opposite side
+### Turn indicators match the turn direction
 
-`turnLeft()` runs `motor1` and `motor2` — the two left-hand motors — backwards,
-and `motor3` and `motor4` forwards. The left wheels therefore roll backwards
-while the right wheels roll forwards, and the body rotates to the left. In the
-same function the firmware drives `LED_FRONT_RIGHT` and `LED_BACK_RIGHT` with
-the blink state, so the **right-hand** pair blinks. `turnRight()` is the exact
-mirror image: the body rotates right and the **left-hand** pair blinks.
+`turnLeft()` still runs `motor1` and `motor2` backwards and `motor3` and
+`motor4` forwards, so the body rotates left. It now blinks `LED_FRONT_LEFT`
+and `LED_BACK_LEFT`. `turnRight()` is the mirror: the body rotates right and
+the right-hand pair blinks. Motor directions were not changed.
 
-This is a mismatch between what the indicator names and what the robot does.
-It is reported rather than fixed because the firmware is presented as supplied;
-the fix is a one-line change in each of the two functions, listed in
-[13 §4](13_Future_Improvements.md#4-the-turn-indicators-are-on-the-wrong-side).
+This replaced the earlier mismatch, in which each turn blinked the opposite
+side. The correction is commit `68b110b`. The old behaviour is kept as history
+in [13 §4](13_Future_Improvements.md#4-the-turn-indicators-are-on-the-wrong-side).
 
 ### Why the rear reaction drives forward
 
