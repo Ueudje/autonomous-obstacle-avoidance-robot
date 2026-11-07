@@ -3,7 +3,7 @@
 **Project:** Autonomous Obstacle-Avoidance Robot
 **Platform:** Arduino Uno (ATmega328P) + L293D / Adafruit Motor Shield V1-compatible shield
 **Firmware:** [`src/robot/Robot.ino`](../src/robot/Robot.ino)
-**Status:** final implementation documented, with the full development history kept in [`history/`](../history/)
+**Status:** final implementation documented, with the full development history kept in [`history/`](../history/).
 **Read this first:** the firmware drives three indicator pins that the motor
 shield already owns, and blocks the sensor scan for up to 5 s at a time. Both are
 documented rather than hidden — see [12 §7](12_Final_Implementation.md#7-pin-conflict--verification)
