@@ -21,7 +21,7 @@ setup:
 loop, forever:
     read  A0, A1, A2, A3            (analogRead, 0..1023)
 
-    if A0 < 200 or A1 < 200:                        # obstacle in front
+    if A0 < OBSTACLE_THRESHOLD or A1 < OBSTACLE_THRESHOLD:   # 200, obstacle in front
         stopMotors(allLedsOn = true)                 # LEDs all on
         wait 1000 ms
         moveBackward()                               # 2000 ms, rear pair blinks
@@ -29,7 +29,7 @@ loop, forever:
         wait 1000 ms
         if random(2) == 0:  turnLeft()               # 1000 ms
         else:                turnRight()             # 1000 ms
-    else if A2 < 200 or A3 < 200:                    # obstacle behind
+    else if A2 < OBSTACLE_THRESHOLD or A3 < OBSTACLE_THRESHOLD:  # obstacle behind
         stopMotors(allLedsOn = true)
         wait 1000 ms
         moveForward()                                # 500 ms
@@ -67,7 +67,7 @@ int backRight  = analogRead(IR_BACK_RIGHT);    // A3
 Four reads, no delay between them, and the values are used only in the two
 comparisons below.
 
-**Threshold.** `200`, written inline at both test sites. An FC-51's `OUT` pin
+**Threshold.** `OBSTACLE_THRESHOLD`, defined as `200`. An FC-51's `OUT` pin
 is a comparator output, so a LOW reads as roughly `0` and a HIGH as roughly
 `1023`; the threshold only has to sit between those two levels, and the real
 adjustment is the module's own trimpot. A module that pulls `OUT` **high** while
@@ -77,15 +77,15 @@ a full 5 s sequence on a single sample.
 
 ## 4. Case 1 — obstacle in front
 
-Entered when `frontLeft < 200 || frontRight < 200`. Total time: **5000 ms**, and
-no sensor is read for any of it.
+Entered when `frontLeft < OBSTACLE_THRESHOLD || frontRight < OBSTACLE_THRESHOLD`.
+Total time: **5000 ms**, and no sensor is read for any of it.
 
 | # | Call | Duration | Motors | Indicators |
 |---|---|---|---|---|
 | 1 | `stopMotors(true)` then `delay(1000)` | 1000 ms | released | all four on |
 | 2 | `moveBackward()` | 2000 ms | all four `BACKWARD` | rear pair blinking |
 | 3 | `stopMotors(true)` then `delay(1000)` | 1000 ms | released | all four on |
-| 4 | `turnLeft()` or `turnRight()` | 1000 ms | see below | the *opposite* pair blinking |
+| 4 | `turnLeft()` or `turnRight()` | 1000 ms | see below | the pair on the turn side blinking |
 | 5 | `stopMotors(true)` at the end of the turn | — | released | all four on |
 
 `random(2) == 0` picks the direction, once, in step 4. The two turn functions
@@ -112,24 +112,23 @@ starts `false`, so the first 200 ms of the reverse are dark.
 
 | Turn | `motor1` FL | `motor2` BL | `motor3` BR | `motor4` FR | Blinking LEDs |
 |---|---|---|---|---|---|
-| `turnLeft()` | `BACKWARD` | `BACKWARD` | `FORWARD` | `FORWARD` | **FR** and **BR** |
-| `turnRight()` | `FORWARD` | `FORWARD` | `BACKWARD` | `BACKWARD` | **FL** and **BL** |
+| `turnLeft()` | `BACKWARD` | `BACKWARD` | `FORWARD` | `FORWARD` | **FL** and **BL** |
+| `turnRight()` | `FORWARD` | `FORWARD` | `BACKWARD` | `BACKWARD` | **FR** and **BR** |
 
 In both rows the body rotates the way the function name says: in `turnLeft()` the
 left wheels roll backwards while the right wheels roll forwards, which turns the
 robot to the left.
 
-**But the indicators are on the other side.** `turnLeft()` blinks the two
-right-hand indicators. A watcher cannot tell from the blinking which way the
-robot is about to go — the opposite pair is lit. The same inversion applies in
-`turnRight()`. This is recorded in
-[12 §8](12_Final_Implementation.md#8-final-robot-behaviour) and the one-line fix
-is in
+The blinking pair is the side the robot turns toward. `turnLeft()` blinks the
+two left-hand indicators; `turnRight()` blinks the two right-hand ones. Motor
+directions were not changed. The earlier opposite-side behaviour, and the fix,
+are in
+[12 §8](12_Final_Implementation.md#turn-indicators-match-the-turn-direction) and
 [13 §4](13_Future_Improvements.md#4-the-turn-indicators-are-on-the-wrong-side).
 
 ## 6. Case 2 — obstacle behind
 
-Entered when the front test is false and `backLeft < 200 || backRight < 200`.
+Entered when the front test is false and `backLeft < OBSTACLE_THRESHOLD || backRight < OBSTACLE_THRESHOLD`.
 Total time: **1800 ms**.
 
 | # | Call | Duration | Motors | Indicators |
