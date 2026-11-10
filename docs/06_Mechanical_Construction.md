@@ -63,7 +63,7 @@ fill in.
 
 ## 6. Installing the four IR sensors on the lower level
 
-14. Mount one FC-51 at each corner of the lower plate at the lower level, with
+14. Mount one FC-51 at each corner of the lower plate, at the lower level, with
     the emitter/detector pair facing outwards from the chassis.
 15. Set each trimpot to mid-range before wiring anything, then tune with the
     actual obstacle and the actual floor material.
