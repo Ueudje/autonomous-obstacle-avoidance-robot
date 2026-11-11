@@ -15,7 +15,7 @@ experiments of the project as history, not as a general claim about 18650 cells.
 | **Capacity** | mAh / Ah | how much charge the source stores | how long it can supply that current | label, confirmed by a capacity test |
 | **Startup / stall current** | A (peak) | the current a motor draws when it is *not* turning — it is back-driven | whether the source survives a start from standstill | motor datasheet, or a current probe in series |
 
-A cell can be excellent on capacity and still be useless on current capability
+A cell can be excellent on capacity and still be useless on current capability,
 and vice versa. This project ran into exactly that.
 
 ## 2. The "6800 mAh" problem
