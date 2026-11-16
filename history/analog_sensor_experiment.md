@@ -17,7 +17,7 @@
 
 ## 1. The starting assumption
 
-The first plan was to treat each IR sensor as an **analog** measurement:
+The first plan, was to treat each IR sensor as an **analog** measurement:
 
 ```cpp
 // EXPLORED, NOT IMPLEMENTED
