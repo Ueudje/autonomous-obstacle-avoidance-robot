@@ -38,7 +38,7 @@ Every one of those produces a robot that does not go straight.
 ```
 
 The important part is **step 2**: while the robot is on blocks, the rotation
-direction of a wheel is a pure function of its wiring and its mounting with no
+direction of a wheel is a pure function of its wiring and its mounting, with no
 mechanical load and no other motor involved. Whatever differs between the four
 wheels at that point is the fault.
 
