@@ -177,7 +177,7 @@ are dark before the first toggle.
 |---|---|
 | `unsigned long` | `blinkInterval`, and the `millis()` deadlines inside the loops |
 | `int` | the four `analogRead()` results |
-| `bool` | the `stopMotors()` parameter, and the two `blinkState` locals |
+| `bool` | the `stopMotors()` parameter, and the three `blinkState` locals |
 | `uint8_t`, `unsigned long` | from the library's own declarations, not from this sketch |
 
 `random(2)` returns `int`; the result is only ever compared against `0`, so no
@@ -211,11 +211,11 @@ a wiring fact, documented in
 
 | Check | Result |
 |---|---|
-| Compiles as a single `.ino` | yes — see §9 for the library install |
+| Compiles as a single `.ino` | yes — library install is in [12 §9](12_Final_Implementation.md#9-compile-and-upload--arduino-ide-1819) |
 | Every `pinMode()` present for every pin used | yes, four and four |
 | Every pin written by `digitalWrite()` also set to `OUTPUT` | yes |
 | Speeds set for every motor before any `run()` | yes, in `setup()` |
-| `millis()` used as a deadline, not as a delay | yes, in both loops |
+| `millis()` used as a deadline, not as a delay | yes, in the three timed loops |
 | Blocking calls | **ten `delay()` calls and three `while` loops** — see §5 |
 | Unused variables | none |
 | Unused functions | none — all seven functions are called |
