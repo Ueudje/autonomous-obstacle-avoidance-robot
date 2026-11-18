@@ -13,7 +13,7 @@
 The starting point was the simplest possible statement: *a robot that drives
 around a room by itself and does not hit anything.*
 
-The first list of behaviours written before any component was chosen:
+The first list of behaviours written, before any component was chosen:
 
 1. drive forward on its own;
 2. use infrared light to know whether something is in the way;
