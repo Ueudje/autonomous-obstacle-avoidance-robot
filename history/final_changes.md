@@ -110,9 +110,9 @@ sensing: the blink task and every other non-blocking task keep running, so a
 however, deliberately stayed in `STATE_FORWARD` — the sequence is fixed once it
 starts, and re-evaluating it would change the documented behaviour. That
 decision is recorded in
-[08 §7](../docs/08_Algorithm.md#4-case-1--obstacle-in-front)
+[08 §4](../docs/08_Algorithm.md#4-case-1--obstacle-in-front)
 and the change itself is listed in
-[13 §3](../docs/13_Future_Improvements.md#14-re-evaluate-obstacles-mid-sequence).
+[13 §1.4](../docs/13_Future_Improvements.md#14-re-evaluate-obstacles-mid-sequence).
 
 ## 3. The rear-obstacle decision
 
@@ -165,7 +165,7 @@ D13 was therefore unavoidable. Its side effect — the Uno's built-in LED mirror
 the rear-right indicator — is **flagged rather than hidden**, together with the
 alternatives, in
 [12 §7](../docs/12_Final_Implementation.md#7-pin-conflict--verification) and in
-[13 §4](../docs/13_Future_Improvements.md). Nothing was changed silently.
+[13 §2.1](../docs/13_Future_Improvements.md#21-move-the-indicators-off-the-shields-pins). Nothing was changed silently.
 
 The same check also flagged that D9 and D10 are the pins a servo library would
 claim. This project has no servos, so it is safe **today**; it is recorded so
@@ -175,13 +175,13 @@ that adding a servo later does not quietly break an indicator.
 
 | Tempting change | Why it was not made |
 |---|---|
-| debounce the sensors | it changes the documented timing; it belongs in [13 §1](../docs/13_Future_Improvements.md#13-re-read-the-sensors-more-than-once-per-poll) |
-| re-evaluate obstacles mid-sequence | it changes the observable sequence; [13 §3](../docs/13_Future_Improvements.md#14-re-evaluate-obstacles-mid-sequence) |
+| debounce the sensors | it changes the documented timing; it belongs in [13 §1.3](../docs/13_Future_Improvements.md#13-re-read-the-sensors-more-than-once-per-poll) |
+| re-evaluate obstacles mid-sequence | it changes the observable sequence; [13 §1.4](../docs/13_Future_Improvements.md#14-re-evaluate-obstacles-mid-sequence) |
 | invert a motor in the code | a direction problem is a wiring problem; the mirror is the fix |
 | raise the speed above 150/255 | the power source is the limiting factor, not the duty cycle |
 | remove the startup delay | it is a safety feature |
 | move an LED to A0/A1 with `analogWrite()` | A0/A1 cannot do `digitalRead`; it is a behaviour change, so it is documented as an option, not applied |
-| add the second sensor height | no digital-capable pin is left; [13 §2](../docs/13_Future_Improvements.md#22-a-second-sensor-height-never-built) |
+| add the second sensor height | no digital-capable pin is left; [13 §2.2](../docs/13_Future_Improvements.md#22-a-second-sensor-height-never-built) |
 
 ## 7. Verification performed on that firmware
 
