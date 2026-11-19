@@ -36,7 +36,7 @@ explicit list of everything the project brief does *not* fix.
 Digital I/O actually available on this board: D0–D13 plus A0–A5. D0/D1 are the
 USB serial lines; A0–A5 can also serve as digital pins. With the motor shield
 fitted, the project uses the pins listed in
-[12 Final Implementation §6](12_Final_Implementation.md#2-final-pin-assignment-as-written-in-the-sketch).
+[12 Final Implementation §2](12_Final_Implementation.md#2-final-pin-assignment-as-written-in-the-sketch).
 
 ## 3. Motor driver shield
 
@@ -62,8 +62,8 @@ and drawn in [`diagrams/pin_map_diagram.png`](../diagrams/pin_map_diagram.png).
 | M3 | Back right | `AFMotor motorBR(3)` |
 | M4 | Front right | `AFMotor motorFR(4)` |
 
-Speed in the final firmware: `MOTOR_SPEED = 150` on the 0–255 scale, i.e. about
-59 % of full command.
+Speed in the final firmware: `setSpeed(150)` on the 0–255 scale, i.e. about
+59 % of full command. There is no named speed constant.
 
 **DC motors have no fixed "VCC" and "GND" terminal.** Each motor has two
 terminals and the H-bridge reverses the polarity across them to change
@@ -88,14 +88,14 @@ lower chassis level.
 * Interface: **VCC / GND / OUT**, read with `analogRead()`. The final firmware
   calls `analogRead()` and tests `value < 200`; see
   [07 Software Architecture §6](07_Software_Architecture.md#6-why-the-sensors-are-read-with-analogread).
-* The pin numbers above are the ones in the sketch. `A2`–`A5` are the pins a
-  *digital* rework would use, because they are ordinary GPIO (digital 16–19);
-  `A0` and `A1` are analog-input-only and cannot be used with `digitalRead()`.
-  Compare [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs).
+* The pin numbers above are the ones in the sketch. On the Uno, `A0`–`A5`
+  are also digital pins 14–19, so `digitalRead()` works on `A0` and `A1` too.
+  Compare [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs) and
+  [12 §7.4](12_Final_Implementation.md#74-two-secondary-observations).
 * `OUT` is **LOW while an obstacle is in range** on a standard module, which is
   what makes the `< 200` test work. There is **no** `SENSOR_ACTIVE_LOW` switch
   in this firmware, so an inverted module never triggers. Confirm on your own
-  board — [09 Testing step 6](09_Testing.md#7-stage-e--one-ir-sensor-at-a-time).
+  board — [09 Testing stage E, step 4](09_Testing.md#step-4--lowhigh-sensor-logic).
 * Detection distance is set by the on-board trimpot: roughly 2–40 cm depending
   on the module and the surface. **To be verified** for the real floor material.
 
