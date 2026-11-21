@@ -1,4 +1,4 @@
-# History — The Analog Sensor Experiment
+`# History — The Analog Sensor Experiment
 
 > **This is project history, and the sensor handling described here was not
 > shipped.** The firmware in
@@ -30,7 +30,7 @@ bool obstacleNear(int pin, int threshold) {
 ```
 
 The reasoning was reasonable at the time: an IR emitter's reflected signal
-weakens with distance, so a raw reading "should" carry distance information,
+weakens with distance so a raw reading "should" carry distance information,
 and a threshold would turn it into a yes/no.
 
 ## 2. What was explored with the analog idea
