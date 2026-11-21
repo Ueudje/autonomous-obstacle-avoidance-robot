@@ -194,7 +194,7 @@ verified**.
 | T4 | narrow gap | two boxes forming a 25 cm gap | turns until the path is free | pass |
 | T5 | power removed | disconnect the pack while driving | stops within one poll interval | pass |
 | T6 | dark floor | low ambient light | detection range changes | **known limit** |
-| T7 | obstacle appears during the reverse | box moved in behind during `REVERSE` | not re-evaluated until `FORWARD` | **known limit**, see [08 §7](08_Algorithm.md#4-case-1--obstacle-in-front) |
+| T7 | obstacle appears during the reverse | box moved in behind during `REVERSE` | not re-evaluated until `FORWARD` | **known limit**, see [08 §4](08_Algorithm.md#4-case-1--obstacle-in-front) |
 | T8 | glossy floor | polished board | specular reflection can give a false trigger | **known limit** |
 
 T6, T7 and T8 are listed as limits rather than failures because the final design
