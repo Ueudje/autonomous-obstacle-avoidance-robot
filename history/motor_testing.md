@@ -57,7 +57,7 @@ The two right-hand motors were reversed relative to the two left-hand motors.
 
 A DC motor has **two terminals and no inherent polarity**. The L293D's H-bridge
 reverses the polarity across them to change direction. Red and black were being
-used as an organisational convention, and the same convention had been applied
+used as an organisational convention and the same convention had been applied
 to both sides.
 
 That is wrong for a mirrored pair. A left wheel and a right wheel are mounted as
