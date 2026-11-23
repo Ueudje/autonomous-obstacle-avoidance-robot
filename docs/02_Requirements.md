@@ -22,7 +22,7 @@ requirement is traceable to a documented design decision.
 | **F11** | Four LEDs must indicate direction: 2 red front, 2 white rear. | direct `digitalWrite()` in five functions | met in code, **not functional as pinned** — [12 §7](12_Final_Implementation.md#7-pin-conflict--verification) | [T2, T3](09_Testing.md) |
 | **F12** | A safety delay must run before normal autonomous movement. | two `delay(1000)` calls in `setup()` — 2 s, all indicators on then off | met, but the robot moves the moment it ends | power-on test |
 | **F13** | All four LEDs are used as the startup indicator. | all four HIGH 1000 ms, all four LOW 1000 ms | met, but on the conflicted pins of F11 | power-on test |
-| **F14** | *(added by review)* The loop must keep sensing while the robot manoeuvres. | not present — ten `delay()` calls, longest block 2000 ms | **not met** | [12 §5](12_Final_Implementation.md#6-timings-as-coded) |
+| **F14** | *(added by review)* The loop must keep sensing while the robot manoeuvres. | not present — ten `delay()` calls, longest block 2000 ms | **not met** | [12 §6](12_Final_Implementation.md#6-timings-as-coded) |
 
 ## 2. Hardware requirements
 
@@ -48,10 +48,10 @@ requirement is traceable to a documented design decision.
 |---|---|---|
 | **C1** | The motor shield already occupies 8 Arduino pins (`3, 4, 5, 6, 7, 8, 11, 12`), and `D0`/`D1` are the USB serial lines. | Nine more pins are spoken for before the robot has a sensor. The supplied firmware puts all four indicators on four of them, which does not survive checking — [12 §7](12_Final_Implementation.md#7-pin-conflict--verification). |
 | **C2** | Motor current peaks far exceed what the Uno's regulator can supply. | The motor rail is fed directly from the battery, not through the board. |
-| **C3** | Several robot tasks must run at once (scan, blink, drive). | The brief's non-blocking requirement is **not met**: the firmware uses `millis()` in three loops and `delay()` ten times. It blinks while it drives, but it does not scan. [13 §1](13_Future_Improvements.md#11-make-the-loop-non-blocking) |
-| **C4** | The IR module output level is a board property, not a datasheet guarantee. | The firmware hard-codes the assumption `analogRead() < 200` and has no polarity switch, so an inverted module never triggers. [13 §1](13_Future_Improvements.md#12-read-the-sensors-digitally) |
+| **C3** | Several robot tasks must run at once (scan, blink, drive). | The brief's non-blocking requirement is **not met**: the firmware uses `millis()` in three loops and `delay()` ten times. It blinks while it drives, but it does not scan. [13 §1.1](13_Future_Improvements.md#11-make-the-loop-non-blocking) |
+| **C4** | The IR module output level is a board property, not a datasheet guarantee. | The firmware hard-codes the assumption `analogRead() < 200` and has no polarity switch, so an inverted module never triggers. [13 §1.2](13_Future_Improvements.md#12-read-the-sensors-digitally) |
 | **C5** | Only four LED-capable pins are free on an Uno with this shield: `D2`, `D9`, `D10`, `D13`. | Exactly enough for four indicators, and they are the pins a working build must use. The supplied firmware does not use them, which is the fault reported in C1. |
-| **C6** | `A0` and `A1` cannot be used as digital pins. | The supplied sensor assignment is legal for `analogRead()` but forecloses a later digital rework, which needs `A2`–`A5`. [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs) |
+| **C6** | `A0`–`A5` are also digital pins on the Uno (14–19). | The supplied sensors stay on `analogRead()`. A later `digitalRead()` rework does not have to leave `A0` and `A1`. [05 §2](05_Wiring.md#2-sensors-the-four-ir-inputs) |
 | **C7** | The brief forbids inventing specifications. | Every unspecified value is marked **to be verified** in the diagrams and in [03 Hardware](03_Hardware.md). |
 
 ## 4. Non-functional requirements
